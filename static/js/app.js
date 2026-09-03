@@ -71,7 +71,7 @@ let _dragGroup = null;
 
 // ── Dashboard ────────────────────────────────────────
 async function loadDashboard() {
-  const [stats, hosts] = await Promise.all([api.get('/api/stats'), api.get('/api/hosts')]);
+  const [stats, hosts] = await Promise.all([api.get('api/stats'), api.get('api/hosts')]);
 
   document.getElementById('stat-total').textContent   = stats.total;
   document.getElementById('stat-up').textContent      = stats.up;
@@ -209,7 +209,7 @@ function renderDashCards(hosts) {
         saveCardOrder(order);
       } else {
         // Cross-group – move host to target group
-        await api.put(`/api/hosts/${_dragId}`, { group_name: targetGroup });
+        await api.put(`api/hosts/${_dragId}`, { group_name: targetGroup });
         const h = _dashHosts.find(x => x.id === _dragId);
         if (h) h.group_name = targetGroup;
         toast(`Movido a "${targetGroup || 'Sin grupo'}"`, 'info');
@@ -233,7 +233,7 @@ function renderDashCards(hosts) {
       if (e.target !== zone) return;
       const targetGroup = zone.dataset.group;
       if (_dragId == null || _dragGroup === targetGroup) return;
-      await api.put(`/api/hosts/${_dragId}`, { group_name: targetGroup });
+      await api.put(`api/hosts/${_dragId}`, { group_name: targetGroup });
       const h = _dashHosts.find(x => x.id === _dragId);
       if (h) h.group_name = targetGroup;
       toast(`Movido a "${targetGroup || 'Sin grupo'}"`, 'info');
@@ -251,7 +251,7 @@ function hostNameById(hosts, id) {
 let allHosts = [];
 
 async function loadHostsTable() {
-  allHosts = await api.get('/api/hosts');
+  allHosts = await api.get('api/hosts');
   renderHostsTable(allHosts);
 }
 
@@ -303,7 +303,7 @@ document.getElementById('host-search').addEventListener('input', e => {
 
 async function checkNow(id) {
   toast('Comprobando host…', 'info');
-  const h = await api.post(`/api/hosts/${id}/check`, {}).then(r => r[1]);
+  const h = await api.post(`api/hosts/${id}/check`, {}).then(r => r[1]);
   toast(`${h.name}: ${statusLabel(h.current_status)}${h.last_rtt ? ' – '+h.last_rtt.toFixed(1)+'ms' : ''}`,
         h.current_status === 'up' ? 'success' : 'error');
   loadHostsTable();
@@ -312,7 +312,7 @@ async function checkNow(id) {
 async function deleteHost(id) {
   const h = allHosts.find(x => x.id === id);
   if (!confirm(`¿Eliminar host "${h?.name}"?`)) return;
-  await api.del(`/api/hosts/${id}`);
+  await api.del(`api/hosts/${id}`);
   toast('Host eliminado', 'info');
   loadHostsTable();
   if (document.getElementById('dashboard').classList.contains('active')) loadDashboard();
@@ -340,7 +340,7 @@ async function openHostModal(host = null) {
   f.alert_on_up.checked   = host?.alert_on_up ?? true;
   f.alert_email.value     = host?.alert_email ?? '';
   // Populate group datalist
-  const groups = await api.get('/api/groups');
+  const groups = await api.get('api/groups');
   const dl = document.getElementById('group-list');
   dl.innerHTML = groups.filter(Boolean).map(g => `<option value="${esc(g)}">`).join('');
   hostModal.classList.add('open');
@@ -353,8 +353,8 @@ function editHost(id) {
 
 async function openHostDetail(id) {
   const [h, logs] = await Promise.all([
-    api.get(`/api/hosts/${id}`),
-    api.get(`/api/hosts/${id}/logs?limit=40`),
+    api.get(`api/hosts/${id}`),
+    api.get(`api/hosts/${id}/logs?limit=40`),
   ]);
   const dlg = document.getElementById('detail-modal');
   document.getElementById('detail-title').textContent = h.name;
@@ -405,10 +405,10 @@ document.getElementById('host-form').addEventListener('submit', async e => {
   if (!data.name || !data.address) { toast('Nombre y dirección son obligatorios', 'error'); return; }
 
   if (editingHostId) {
-    await api.put(`/api/hosts/${editingHostId}`, data);
+    await api.put(`api/hosts/${editingHostId}`, data);
     toast('Host actualizado', 'success');
   } else {
-    await api.post('/api/hosts', data);
+    await api.post('api/hosts', data);
     toast('Host añadido', 'success');
   }
   hostModal.classList.remove('open');
@@ -428,7 +428,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 
 // ── Settings ─────────────────────────────────────────
 async function loadSettings() {
-  const s = await api.get('/api/settings');
+  const s = await api.get('api/settings');
   const f = document.getElementById('settings-form');
   Object.entries(s).forEach(([k, v]) => {
     const el = f.elements[k];
@@ -450,7 +450,7 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
     smtp_tls:  f.smtp_tls.checked ? 'true' : 'false',
     alert_global_email: f.alert_global_email.value.trim(),
   };
-  await api.put('/api/settings', data);
+  await api.put('api/settings', data);
   toast('Configuración guardada', 'success');
 });
 
@@ -459,7 +459,7 @@ document.getElementById('test-email-btn').addEventListener('click', async () => 
   const to = f.alert_global_email.value.trim();
   if (!to) { toast('Introduce un email de destino en el campo "Email global"', 'error'); return; }
   toast('Enviando email de prueba…', 'info');
-  const [status, res] = await api.post('/api/settings/test-email', {
+  const [status, res] = await api.post('api/settings/test-email', {
     to, smtp_host: f.smtp_host.value, smtp_port: f.smtp_port.value,
     smtp_user: f.smtp_user.value, smtp_pass: f.smtp_pass.value,
     smtp_from: f.smtp_from.value, smtp_tls: f.smtp_tls.checked,
@@ -489,7 +489,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 
 async function loadMapData() {
-  [mapHosts, mapLinks] = await Promise.all([api.get('/api/hosts'), api.get('/api/links')]);
+  [mapHosts, mapLinks] = await Promise.all([api.get('api/hosts'), api.get('api/links')]);
   resizeCanvas();
 }
 
@@ -726,7 +726,7 @@ canvas.addEventListener('mouseup', async e => {
     const h = drag.host;
     canvas.style.cursor = 'default';
     drag = null;
-    await api.put(`/api/hosts/${h.id}`, { map_x: h.map_x, map_y: h.map_y });
+    await api.put(`api/hosts/${h.id}`, { map_x: h.map_x, map_y: h.map_y });
   }
   if (panning) {
     panning = null;
@@ -810,14 +810,14 @@ document.addEventListener('keydown', e => {
 document.getElementById('map-refresh').addEventListener('click', loadMapData);
 
 async function createLink(src, dst) {
-  const [status, res] = await api.post('/api/links', { src, dst });
+  const [status, res] = await api.post('api/links', { src, dst });
   if (status === 201) { mapLinks.push(res); toast('Enlace creado', 'success'); }
   else if (status === 409) toast('El enlace ya existe', 'info');
   drawMap();
 }
 
 async function deleteLink(id) {
-  await api.del(`/api/links/${id}`);
+  await api.del(`api/links/${id}`);
   mapLinks = mapLinks.filter(l => l.id !== id);
   toast('Enlace eliminado', 'info');
   drawMap();
@@ -851,7 +851,7 @@ setInterval(() => {
   if (active === 'dashboard') loadDashboard();
   if (active === 'hosts')     loadHostsTable();
   if (active === 'map') {
-    api.get('/api/hosts').then(h => {
+    api.get('api/hosts').then(h => {
       // Merge positions from canvas with fresh status
       mapHosts = h.map(nh => {
         const existing = mapHosts.find(x => x.id === nh.id);

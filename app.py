@@ -13,6 +13,16 @@ import os
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Deployment (env-driven; all optional for local use)
+APP_BASE = os.environ.get('APP_BASE', '').rstrip('/')   # e.g. /proyectos/network-monitor when served under a sub-path
+LISTEN_HOST = os.environ.get('HOST', '0.0.0.0')
+LISTEN_PORT = int(os.environ.get('PORT', 5000))
+
+
+@app.context_processor
+def inject_app_base():
+    return {'app_base': APP_BASE}
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "network_monitor.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -488,5 +498,6 @@ if __name__ == '__main__':
         db.session.commit()
 
     MonitorEngine().start()
-    print('[Network Monitor] http://localhost:5000')
-    app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)
+    print(f'[Network Monitor] listening on http://{LISTEN_HOST}:{LISTEN_PORT}')
+    app.run(debug=False, host=LISTEN_HOST, port=LISTEN_PORT,
+            use_reloader=False, threaded=True)
