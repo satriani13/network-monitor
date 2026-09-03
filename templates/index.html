@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Monitor</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>&#9432; Network Monitor</h1>
+    <span>Monitorización de red</span>
+  </div>
+
+  <nav style="padding-top:8px">
+    <div class="nav-item active" data-nav="dashboard">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4M3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707M2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10m9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5m.754-4.246a.39.39 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.39.39 0 0 0-.029-.518z"/>
+        <path fill-rule="evenodd" d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.475 13 8 13c-1.474 0-3.31.488-4.615.911-1.087.352-2.49.003-2.932-1.25A8 8 0 0 1 0 10m8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3"/>
+      </svg>
+      Dashboard
+    </div>
+    <div class="nav-item" data-nav="hosts">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm.5 3h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1M2 10h1v1H2zm2 0h1v1H4zm2 0h1v1H6zm2 0h1v1H8zm2 0h1v1h-1zm2 0h1v1h-1zm2 0h1v1h-1z"/>
+      </svg>
+      Gestión de Hosts
+    </div>
+    <div class="nav-item" data-nav="map">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path fill-rule="evenodd" d="M15.817.113A.5.5 0 0 1 16 .5v14a.5.5 0 0 1-.402.49l-5 1a.5.5 0 0 1-.196 0L5.5 15.01l-4.902.98A.5.5 0 0 1 0 15.5v-14a.5.5 0 0 1 .402-.49l5-1a.5.5 0 0 1 .196 0L10.5.99l4.902-.98a.5.5 0 0 1 .415.103M10 1.91l-4-.8v12.98l4 .8zm1 12.98 4-.8V1.11l-4 .8zm-6-.8V1.11l-4 .8v12.98z"/>
+      </svg>
+      Mapa de Red
+    </div>
+    <div class="nav-item" data-nav="settings">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+        <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.474l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
+      </svg>
+      Configuración
+    </div>
+  </nav>
+
+  <div class="sidebar-status">
+    <div class="status-row"><span>En línea</span><span class="badge badge-up" id="sb-up">0</span></div>
+    <div class="status-row"><span>Caídos</span><span class="badge badge-down" id="sb-down">0</span></div>
+    <div class="status-row"><span>Desconocido</span><span class="badge badge-unk" id="sb-unknown">0</span></div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+  <div class="topbar">
+    <h2 id="section-title">Dashboard</h2>
+    <div class="topbar-actions" id="topbar-actions">
+      <!-- Dynamic per section -->
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <section class="section active" id="dashboard">
+    <div class="dash-stats">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(139,148,158,.1)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="#8b949e"><path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+        </div>
+        <div><div class="stat-val" id="stat-total">–</div><div class="stat-lbl">Total hosts</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(63,185,80,.1)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="#3fb950"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+        </div>
+        <div><div class="stat-val" style="color:var(--up)" id="stat-up">–</div><div class="stat-lbl">En línea</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(248,81,73,.1)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="#f85149"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/></svg>
+        </div>
+        <div><div class="stat-val" style="color:var(--down)" id="stat-down">–</div><div class="stat-lbl">Caídos</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(210,153,34,.1)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="#d29922"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>
+        </div>
+        <div><div class="stat-val" style="color:var(--warn)" id="stat-unknown">–</div><div class="stat-lbl">Sin datos</div></div>
+      </div>
+    </div>
+
+    <div class="incidents-panel">
+      <h3>INCIDENCIAS ÚLTIMAS 24h</h3>
+      <div class="incident-list" id="incident-list"></div>
+    </div>
+
+    <div class="host-grid" id="host-grid"></div>
+  </section>
+
+  <!-- Hosts -->
+  <section class="section" id="hosts">
+    <div style="padding:16px 24px 12px;display:flex;gap:10px;align-items:center;flex-shrink:0">
+      <input id="host-search" type="search" placeholder="Buscar por nombre, IP o etiqueta…" style="max-width:300px">
+      <button class="btn btn-primary" id="add-host-btn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
+        Añadir Host
+      </button>
+      <button class="btn btn-ghost" onclick="loadHostsTable()">Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th><th>Dirección</th><th>Puerto</th><th>Intervalo</th>
+            <th>Estado</th><th>RTT</th><th>Etiquetas</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="hosts-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Map -->
+  <section class="section" id="map" style="flex-direction:column">
+    <div class="map-toolbar">
+      <button class="btn btn-ghost btn-sm" id="map-zoom-in">＋ Zoom</button>
+      <button class="btn btn-ghost btn-sm" id="map-zoom-out">－ Zoom</button>
+      <button class="btn btn-ghost btn-sm" id="map-fit">⊡ Ajustar</button>
+      <div class="map-toolbar-sep"></div>
+      <button class="btn btn-ghost btn-sm" id="map-link-btn">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-4H9q-.13 0-.25.031A2 2 0 0 1 7 10.5H4a2 2 0 1 1 0-4h1.535c.218-.376.495-.714.82-1z"/><path d="M9 5.5a3 3 0 0 0-2.83 4h1.098A2 2 0 0 1 9 6.5h3a2 2 0 1 1 0 4h-1.535a4 4 0 0 1-.82 1H12a3 3 0 1 0 0-6z"/></svg>
+        Enlazar hosts
+      </button>
+      <button class="btn btn-ghost btn-sm" id="map-refresh">↺ Actualizar</button>
+      <span class="map-hint">Clic: arrastrar &nbsp;|&nbsp; Doble-clic: detalles &nbsp;|&nbsp; Rueda: zoom &nbsp;|&nbsp; Clic-dcho: quitar enlace</span>
+    </div>
+    <canvas id="mapCanvas"></canvas>
+  </section>
+
+  <!-- Settings -->
+  <section class="section" id="settings">
+    <div class="settings-wrap">
+      <form id="settings-form">
+
+        <div class="settings-section">
+          <h3>Servidor SMTP (envío de alertas)</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Servidor SMTP</label>
+              <input name="smtp_host" type="text" placeholder="smtp.gmail.com">
+            </div>
+            <div class="form-group">
+              <label>Puerto</label>
+              <input name="smtp_port" type="number" value="587">
+            </div>
+            <div class="form-group">
+              <label>Usuario</label>
+              <input name="smtp_user" type="text" placeholder="usuario@gmail.com">
+            </div>
+            <div class="form-group">
+              <label>Contraseña / App Password</label>
+              <input name="smtp_pass" type="password" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+              <label>From (remitente)</label>
+              <input name="smtp_from" type="text" placeholder="alertas@miempresa.com">
+            </div>
+            <div class="form-group">
+              <label class="toggle-row">
+                <input name="smtp_tls" type="checkbox" checked>
+                Usar STARTTLS
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Alertas</h3>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Email global de alertas (recibe todas las notificaciones)</label>
+              <input name="alert_global_email" type="text" placeholder="admin@miempresa.com, noc@miempresa.com">
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button type="submit" class="btn btn-primary">Guardar configuración</button>
+            <button type="button" class="btn btn-ghost" id="test-email-btn">Enviar email de prueba</button>
+          </div>
+        </div>
+
+        <div class="settings-section" style="color:var(--text2);font-size:13px">
+          <h3>Ayuda – Gmail App Password</h3>
+          <ol style="line-height:1.8;padding-left:20px">
+            <li>Activa la verificación en dos pasos en tu cuenta de Google.</li>
+            <li>Ve a <b>Seguridad → Contraseñas de aplicación</b>.</li>
+            <li>Genera una contraseña para "Correo" y pégala en el campo de contraseña.</li>
+            <li>Usa <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">smtp.gmail.com</code> / puerto <code style="background:var(--bg3);padding:1px 5px;border-radius:4px">587</code> con STARTTLS.</li>
+          </ol>
+        </div>
+
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- ── Modal: Añadir / Editar Host ── -->
+<div class="modal-overlay" id="host-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="host-modal-title">Nuevo Host</h3>
+      <button class="btn-icon" id="host-modal-cancel">✕</button>
+    </div>
+    <form id="host-form">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input name="name" required placeholder="Servidor Web">
+          </div>
+          <div class="form-group">
+            <label>Dirección IP / Hostname *</label>
+            <input name="address" required placeholder="192.168.1.1 o server.local">
+          </div>
+          <div class="form-group full">
+            <label>Descripción</label>
+            <input name="description" placeholder="Descripción opcional">
+          </div>
+          <div class="form-group">
+            <label>Puerto (0 = ICMP Ping)</label>
+            <input name="check_port" type="number" min="0" max="65535" value="0">
+          </div>
+          <div class="form-group">
+            <label>Intervalo de comprobación (seg)</label>
+            <input name="check_interval" type="number" min="5" value="60">
+          </div>
+          <div class="form-group">
+            <label>Timeout (seg)</label>
+            <input name="timeout" type="number" min="1" max="30" value="5">
+          </div>
+          <div class="form-group">
+            <label>Icono</label>
+            <select name="icon_type">
+              <option value="computer">Ordenador / Genérico</option>
+              <option value="server">Servidor</option>
+              <option value="router">Router</option>
+              <option value="switch">Switch</option>
+              <option value="firewall">Firewall</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Etiquetas (separadas por coma)</label>
+            <input name="tags" placeholder="red, producción, dmz">
+          </div>
+          <div class="form-group">
+            <label>Grupo (dashboard)</label>
+            <input name="group_name" list="group-list" placeholder="Servidores, Red, DNS…">
+            <datalist id="group-list"></datalist>
+          </div>
+          <div class="form-group full">
+            <label>Email de alerta para este host (opcional)</label>
+            <input name="alert_email" type="text" placeholder="responsable@empresa.com">
+          </div>
+          <div class="form-group">
+            <label class="toggle-row">
+              <input name="enabled" type="checkbox" checked>
+              Monitorización activa
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row">
+              <input name="alert_on_down" type="checkbox" checked>
+              Alertar al caer
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row">
+              <input name="alert_on_up" type="checkbox" checked>
+              Alertar al recuperarse
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="host-modal-cancel2" onclick="document.getElementById('host-modal').classList.remove('open')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal: Detalle / Historial ── -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <h3 id="detail-title">Host</h3>
+      <button class="btn-icon" id="detail-modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="detail-modal-close2" onclick="document.getElementById('detail-modal').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
