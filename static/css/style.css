@@ -18,6 +18,44 @@
   --shadow:    0 4px 16px rgba(0,0,0,.4);
 }
 
+:root[data-theme="light"] {
+  --bg:        #f6f8fa;
+  --bg2:       #ffffff;
+  --bg3:       #eaeef2;
+  --border:    #d0d7de;
+  --text:      #1f2328;
+  --text2:     #656d76;
+  --accent:    #0969da;
+  --accent2:   #1a7f37;
+  --up:        #1a7f37;
+  --down:      #cf222e;
+  --unknown:   #656d76;
+  --warn:      #9a6700;
+  --shadow:    0 4px 16px rgba(0,0,0,.12);
+}
+
+/* ── Theme toggle button ── */
+#theme-toggle {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 5px 10px;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+#theme-toggle:hover {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--accent);
+}
+#theme-toggle svg { flex-shrink: 0; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
