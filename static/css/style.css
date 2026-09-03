@@ -38,18 +38,42 @@ body {
 }
 
 .sidebar-logo {
-  padding: 20px 16px 16px;
+  padding: 16px 14px 14px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar-logo h1 {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--accent2);
-  letter-spacing: .3px;
+.sidebar-logo-inner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: nowrap;
 }
-.sidebar-logo span {
-  font-size: 11px;
+.sidebar-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(31,111,235,.25);
+}
+.sidebar-logo-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.sidebar-logo-text h1 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: .2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-logo-text span {
+  font-size: 10px;
   color: var(--text2);
+  white-space: nowrap;
+  display: block;
 }
 
 .nav-item {

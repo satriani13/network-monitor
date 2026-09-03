@@ -1,0 +1,44 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a2540"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+    <filter id="glow-blue">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-green">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="13" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="13" fill="#1f6feb" opacity="0.06"/>
+
+  <!-- Network connections -->
+  <line x1="32" y1="17" x2="15" y2="46" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="32" y1="17" x2="49" y2="46" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="15" y1="46" x2="49" y2="46" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Center hub line -->
+  <line x1="32" y1="17" x2="32" y2="34" stroke="#1f6feb" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Bottom nodes (servers – green = up) -->
+  <circle cx="15" cy="46" r="7" fill="#238636" filter="url(#glow-green)"/>
+  <circle cx="15" cy="46" r="4.5" fill="#3fb950"/>
+
+  <circle cx="49" cy="46" r="7" fill="#238636" filter="url(#glow-green)"/>
+  <circle cx="49" cy="46" r="4.5" fill="#3fb950"/>
+
+  <!-- Top hub node (router – blue) -->
+  <circle cx="32" cy="17" r="9" fill="#1a3560" filter="url(#glow-blue)"/>
+  <circle cx="32" cy="17" r="6.5" fill="#1f6feb"/>
+  <circle cx="32" cy="17" r="3" fill="#79b8ff"/>
+
+  <!-- Online status badge (top-right) -->
+  <circle cx="47" cy="11" r="5" fill="#238636"/>
+  <circle cx="47" cy="11" r="3.5" fill="#3fb950"/>
+</svg>

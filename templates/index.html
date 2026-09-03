@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Network Monitor</title>
+<link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -11,8 +12,35 @@
 <!-- ── Sidebar ── -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <h1>&#9432; Network Monitor</h1>
-    <span>Monitorización de red</span>
+    <div class="sidebar-logo-inner">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="sidebar-icon">
+        <defs>
+          <linearGradient id="sbg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1a2540"/>
+            <stop offset="100%" stop-color="#0d1117"/>
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="13" fill="url(#sbg)"/>
+        <rect width="64" height="64" rx="13" fill="#1f6feb" opacity="0.06"/>
+        <line x1="32" y1="17" x2="15" y2="46" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="32" y1="17" x2="49" y2="46" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="15" y1="46" x2="49" y2="46" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="32" y1="17" x2="32" y2="34" stroke="#1f6feb" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+        <circle cx="15" cy="46" r="7" fill="#238636" opacity="0.6"/>
+        <circle cx="15" cy="46" r="4.5" fill="#3fb950"/>
+        <circle cx="49" cy="46" r="7" fill="#238636" opacity="0.6"/>
+        <circle cx="49" cy="46" r="4.5" fill="#3fb950"/>
+        <circle cx="32" cy="17" r="9" fill="#1a3560" opacity="0.8"/>
+        <circle cx="32" cy="17" r="6.5" fill="#1f6feb"/>
+        <circle cx="32" cy="17" r="3" fill="#79b8ff"/>
+        <circle cx="47" cy="11" r="5" fill="#238636" opacity="0.7"/>
+        <circle cx="47" cy="11" r="3.5" fill="#3fb950"/>
+      </svg>
+      <div class="sidebar-logo-text">
+        <h1>Network Monitor</h1>
+        <span>Monitorización de red</span>
+      </div>
+    </div>
   </div>
 
   <nav style="padding-top:8px">
