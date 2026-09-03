@@ -79,11 +79,19 @@
     <div class="status-row"><span>Desconocido</span><span class="badge badge-unk" id="sb-unknown">0</span></div>
   </div>
 </aside>
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
 <!-- ── Main ── -->
 <main class="main">
   <div class="topbar">
-    <h2 id="section-title">Dashboard</h2>
+    <div class="topbar-left">
+      <button id="sidebar-toggle" title="Mostrar / ocultar menú" aria-label="Mostrar u ocultar el menú lateral">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M2.5 4h11a.5.5 0 0 0 0-1h-11a.5.5 0 0 0 0 1m11 3.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 0-1m0 4h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 0-1"/>
+        </svg>
+      </button>
+      <h2 id="section-title">Dashboard</h2>
+    </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="topbar-actions" id="topbar-actions"></div>
       <button id="theme-toggle" title="Cambiar modo noche/día">
@@ -134,7 +142,7 @@
 
   <!-- Hosts -->
   <section class="section" id="hosts">
-    <div style="padding:16px 24px 12px;display:flex;gap:10px;align-items:center;flex-shrink:0">
+    <div class="hosts-toolbar" style="padding:16px 24px 12px;display:flex;gap:10px;align-items:center;flex-shrink:0">
       <input id="host-search" type="search" placeholder="Buscar por nombre, IP o etiqueta…" style="max-width:300px">
       <button class="btn btn-primary" id="add-host-btn">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>

@@ -893,5 +893,34 @@ setInterval(() => {
   });
 })();
 
+// ── Sidebar toggle (collapse on desktop, drawer on mobile) ──
+(function initSidebar() {
+  const body     = document.body;
+  const btn      = document.getElementById('sidebar-toggle');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const mq       = window.matchMedia('(max-width: 768px)');
+  const KEY      = 'nm_sidebar_collapsed';
+
+  if (localStorage.getItem(KEY) === '1') body.classList.add('sidebar-collapsed');
+
+  function closeMobile() { body.classList.remove('sidebar-open'); }
+
+  btn.addEventListener('click', () => {
+    if (mq.matches) {
+      body.classList.toggle('sidebar-open');
+    } else {
+      const collapsed = body.classList.toggle('sidebar-collapsed');
+      localStorage.setItem(KEY, collapsed ? '1' : '0');
+      // repaint the map canvas once the width transition has settled
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
+    }
+  });
+
+  backdrop.addEventListener('click', closeMobile);
+  document.querySelectorAll('.nav-item').forEach(el =>
+    el.addEventListener('click', () => { if (mq.matches) closeMobile(); }));
+  mq.addEventListener('change', closeMobile);
+})();
+
 // ── Init ──────────────────────────────────────────────
 navigate('dashboard');
