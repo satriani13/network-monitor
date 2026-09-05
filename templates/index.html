@@ -224,6 +224,10 @@
               <label>Email global de alertas (recibe todas las notificaciones)</label>
               <input name="alert_global_email" type="text" placeholder="admin@miempresa.com, noc@miempresa.com">
             </div>
+            <div class="form-group">
+              <label>Retraso antes de alertar caída (minutos)</label>
+              <input name="alert_down_delay_min" type="number" min="0" step="1" value="5">
+            </div>
           </div>
           <div style="margin-top:12px;display:flex;gap:8px">
             <button type="submit" class="btn btn-primary">Guardar configuración</button>

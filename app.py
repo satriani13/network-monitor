@@ -51,6 +51,7 @@ class Host(db.Model):
     alert_on_down   = db.Column(db.Boolean, default=True)
     alert_on_up     = db.Column(db.Boolean, default=True)
     alert_email     = db.Column(db.String(255), default='')
+    alert_sent      = db.Column(db.Boolean, default=False)  # down alert already sent for this outage
     logs            = db.relationship('StatusLog', backref='host', lazy=True,
                                       cascade='all, delete-orphan')
 
@@ -236,19 +237,27 @@ def do_check(host_id):
 
         if new_status == 'down' and prev_status != 'down':
             host.down_since = datetime.utcnow()
+            host.alert_sent = False
         elif new_status == 'up':
             host.down_since = None
 
         log = StatusLog(host_id=host.id, status=new_status, rtt=rtt, message=msg)
         db.session.add(log)
-        db.session.commit()
 
-        # Send alert on status change
-        if prev_status != new_status:
-            if new_status == 'down' and host.alert_on_down:
-                send_alert(host, 'down', msg)
-            elif new_status == 'up' and host.alert_on_up and prev_status != 'unknown':
+        # Alert on 'down' only once the host has been down for longer than the
+        # configured grace period (avoids notifying on brief blips).
+        delay_min = float(Setting.get('alert_down_delay_min', '5') or 5)
+        if (new_status == 'down' and host.alert_on_down and not host.alert_sent
+                and host.down_since
+                and datetime.utcnow() - host.down_since >= timedelta(minutes=delay_min)):
+            send_alert(host, 'down', msg)
+            host.alert_sent = True
+        elif new_status == 'up' and prev_status == 'down' and host.alert_sent:
+            if host.alert_on_up:
                 send_alert(host, 'up', msg)
+            host.alert_sent = False
+
+        db.session.commit()
 
 
 class MonitorEngine(threading.Thread):
@@ -402,7 +411,7 @@ def delete_link(link_id):
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     keys = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass',
-            'smtp_from', 'smtp_tls', 'alert_global_email']
+            'smtp_from', 'smtp_tls', 'alert_global_email', 'alert_down_delay_min']
     return jsonify({k: Setting.get(k, '') for k in keys})
 
 
@@ -491,8 +500,12 @@ if __name__ == '__main__':
             with db.engine.connect() as conn:
                 conn.execute(text("ALTER TABLE host ADD COLUMN group_name VARCHAR(100) DEFAULT ''"))
                 conn.commit()
+        if 'alert_sent' not in existing:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE host ADD COLUMN alert_sent BOOLEAN DEFAULT 0'))
+                conn.commit()
         # Default settings
-        for k, v in [('smtp_port', '587'), ('smtp_tls', 'true')]:
+        for k, v in [('smtp_port', '587'), ('smtp_tls', 'true'), ('alert_down_delay_min', '5')]:
             if not Setting.query.get(k):
                 db.session.add(Setting(key=k, value=v))
         db.session.commit()

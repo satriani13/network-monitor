@@ -449,6 +449,7 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
     smtp_from: f.smtp_from.value.trim(),
     smtp_tls:  f.smtp_tls.checked ? 'true' : 'false',
     alert_global_email: f.alert_global_email.value.trim(),
+    alert_down_delay_min: f.alert_down_delay_min.value,
   };
   await api.put('api/settings', data);
   toast('Configuración guardada', 'success');
