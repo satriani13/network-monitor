@@ -56,6 +56,29 @@
 }
 #theme-toggle svg { flex-shrink: 0; }
 
+/* ── Language switch (ES | EN) ── */
+.lang-switch {
+  display: flex;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px;
+}
+.lang-switch button {
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  padding: 4px 9px;
+  transition: background .15s, color .15s;
+}
+.lang-switch button:hover { color: var(--text); }
+.lang-switch button.active { background: var(--accent); color: #fff; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
@@ -342,6 +365,11 @@ thead th {
   letter-spacing: .5px; border-bottom: 1px solid var(--border);
   background: var(--bg2); position: sticky; top: 0; z-index: 1;
 }
+thead th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+thead th.sortable:hover { color: var(--text); }
+thead th.sortable::after { content: ' ↕'; opacity: .3; }
+thead th.sort-asc::after  { content: ' ▲'; opacity: 1; color: var(--accent2); }
+thead th.sort-desc::after { content: ' ▼'; opacity: 1; color: var(--accent2); }
 tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 tbody tr:hover { background: var(--bg3); }
 tbody td { padding: 10px 12px; font-size: 13px; }
@@ -374,6 +402,9 @@ tbody td { padding: 10px 12px; font-size: 13px; }
   flex: 1; display: block; cursor: default;
   background: radial-gradient(ellipse at center, #1a2033 0%, #0d1117 100%);
 }
+:root[data-theme="light"] #mapCanvas {
+  background: radial-gradient(ellipse at center, #ffffff 0%, #e6ebf0 100%);
+}
 
 /* ── Settings ── */
 .settings-wrap { flex: 1; overflow-y: auto; padding: 24px; }
@@ -382,6 +413,8 @@ tbody td { padding: 10px 12px; font-size: 13px; }
   font-size: 14px; font-weight: 600; margin-bottom: 16px;
   padding-bottom: 8px; border-bottom: 1px solid var(--border); color: var(--text2);
 }
+
+.settings-section code { background: var(--bg3); padding: 1px 5px; border-radius: 4px; }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }

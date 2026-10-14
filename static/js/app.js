@@ -22,8 +22,7 @@ const sections = { dashboard: null, hosts: null, map: null, settings: null };
 function navigate(id) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.nav === id));
   document.querySelectorAll('.section').forEach(el => el.classList.toggle('active', el.id === id));
-  document.getElementById('section-title').textContent =
-    { dashboard:'Dashboard', hosts:'Gestión de Hosts', map:'Mapa de Red', settings:'Configuración' }[id];
+  document.getElementById('section-title').textContent = t('nav.' + id);
   if (id === 'dashboard') loadDashboard();
   if (id === 'hosts')     loadHostsTable();
   if (id === 'map')       { loadMapData(); }
@@ -84,12 +83,12 @@ async function loadDashboard() {
   // Incidents
   const il = document.getElementById('incident-list');
   if (stats.recent_incidents.length === 0) {
-    il.innerHTML = '<p style="color:var(--text2);font-size:12px">Sin incidencias en las últimas 24h</p>';
+    il.innerHTML = `<p style="color:var(--text2);font-size:12px">${t('dash.noIncidents')}</p>`;
   } else {
     il.innerHTML = stats.recent_incidents.map(l =>
       `<div class="incident-item">
         <span class="inc-name">${hostNameById(hosts, l.host_id)}</span>
-        <span>${l.message}</span>
+        <span>${esc(msgLabel(l.message))}</span>
         <span class="inc-time">${fmtTime(l.checked_at)}</span>
       </div>`
     ).join('');
@@ -115,7 +114,7 @@ function cardHTML(h) {
       </div>
       <div class="host-card-addr">${esc(h.address)}${h.check_port ? ':'+h.check_port : ''}</div>
       ${h.current_status === 'down' && h.down_since
-        ? `<div class="host-card-downtime">&#9660; Caído: ${fmtDownDuration(h.down_since)}</div>` : ''}
+        ? `<div class="host-card-downtime">&#9660; ${t('card.down')}: ${fmtDownDuration(h.down_since)}</div>` : ''}
       <div class="host-card-footer">
         <div class="host-card-meta"><span>${h.check_port ? 'TCP' : 'Ping'}</span><span>${h.check_interval}s</span></div>
         <div class="host-card-rtt ${h.last_rtt != null ? h.current_status : 'unknown'}">
@@ -128,7 +127,7 @@ function cardHTML(h) {
 function renderDashCards(hosts) {
   const grid = document.getElementById('host-grid');
   if (!hosts.length) {
-    grid.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px">No hay hosts. Ve a <b>Gestión de Hosts</b> para añadir uno.</p>';
+    grid.innerHTML = `<p style="color:var(--text2);text-align:center;padding:40px">${t('dash.empty', { hosts: t('nav.hosts') })}</p>`;
     return;
   }
 
@@ -145,7 +144,7 @@ function renderDashCards(hosts) {
   const groupNames = [
     ...savedGOrder.filter(g => allGroupNames.includes(g)),
     ...allGroupNames.filter(g => !savedGOrder.includes(g)).sort((a, b) => {
-      if (!a) return 1; if (!b) return -1; return a.localeCompare(b, 'es');
+      if (!a) return 1; if (!b) return -1; return a.localeCompare(b, LANG);
     }),
   ];
 
@@ -154,7 +153,7 @@ function renderDashCards(hosts) {
     const up   = hs.filter(h => h.current_status === 'up').length;
     const down = hs.filter(h => h.current_status === 'down').length;
     const col  = isGroupCollapsed(g);
-    const label = g || 'Sin grupo';
+    const label = g || t('group.none');
     return `
       <div class="dash-group" data-group="${esc(g)}">
         <div class="dash-group-header" onclick="toggleGroup('${esc(g).replace(/'/g,"\\'")}')">
@@ -212,7 +211,7 @@ function renderDashCards(hosts) {
         await api.put(`api/hosts/${_dragId}`, { group_name: targetGroup });
         const h = _dashHosts.find(x => x.id === _dragId);
         if (h) h.group_name = targetGroup;
-        toast(`Movido a "${targetGroup || 'Sin grupo'}"`, 'info');
+        toast(t('toast.moved', { g: targetGroup || t('group.none') }), 'info');
       }
       renderDashCards(_dashHosts);
     });
@@ -236,7 +235,7 @@ function renderDashCards(hosts) {
       await api.put(`api/hosts/${_dragId}`, { group_name: targetGroup });
       const h = _dashHosts.find(x => x.id === _dragId);
       if (h) h.group_name = targetGroup;
-      toast(`Movido a "${targetGroup || 'Sin grupo'}"`, 'info');
+      toast(t('toast.moved', { g: targetGroup || t('group.none') }), 'info');
       renderDashCards(_dashHosts);
     });
   });
@@ -249,16 +248,77 @@ function hostNameById(hosts, id) {
 
 // ── Hosts table ──────────────────────────────────────
 let allHosts = [];
+let hostQuery = '';
+let hostSort = { key: 'name', dir: 1 };
+try {
+  const saved = JSON.parse(localStorage.getItem('nm_host_sort'));
+  if (saved && ['name', 'address', 'status'].includes(saved.key) && (saved.dir === 1 || saved.dir === -1)) hostSort = saved;
+} catch {}
+
+const STATUS_RANK = { down: 0, unknown: 1, up: 2 };
+
+// IPv4 → number (null for hostnames / IPv6)
+function ipKey(addr) {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec((addr || '').trim());
+  return m ? ((+m[1] * 256 + +m[2]) * 256 + +m[3]) * 256 + +m[4] : null;
+}
+
+function byName(a, b) {
+  return a.name.localeCompare(b.name, LANG, { numeric: true, sensitivity: 'base' });
+}
+
+function compareHosts(a, b) {
+  let r = 0;
+  if (hostSort.key === 'address') {
+    const ka = ipKey(a.address), kb = ipKey(b.address);
+    if (ka !== null && kb !== null) r = ka - kb;
+    else if (ka !== null) r = -1;            // IPs before hostnames
+    else if (kb !== null) r = 1;
+    else r = a.address.localeCompare(b.address, LANG, { numeric: true, sensitivity: 'base' });
+  } else if (hostSort.key === 'status') {
+    r = (STATUS_RANK[a.current_status] ?? 1) - (STATUS_RANK[b.current_status] ?? 1);
+  } else {
+    r = byName(a, b);
+  }
+  return r * hostSort.dir || byName(a, b);
+}
+
+function updateSortHeaders() {
+  document.querySelectorAll('#hosts th.sortable').forEach(th => {
+    const active = th.dataset.sort === hostSort.key;
+    th.classList.toggle('sort-asc', active && hostSort.dir === 1);
+    th.classList.toggle('sort-desc', active && hostSort.dir === -1);
+    th.setAttribute('aria-sort', active ? (hostSort.dir === 1 ? 'ascending' : 'descending') : 'none');
+  });
+}
+
+document.querySelectorAll('#hosts th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    hostSort = th.dataset.sort === hostSort.key
+      ? { key: hostSort.key, dir: -hostSort.dir }
+      : { key: th.dataset.sort, dir: 1 };
+    try { localStorage.setItem('nm_host_sort', JSON.stringify(hostSort)); } catch {}
+    renderHostsTable();
+  });
+});
 
 async function loadHostsTable() {
   allHosts = await api.get('api/hosts');
-  renderHostsTable(allHosts);
+  renderHostsTable();
 }
 
-function renderHostsTable(hosts) {
+function renderHostsTable() {
+  const q = hostQuery;
+  const hosts = allHosts
+    .filter(h => !q ||
+      h.name.toLowerCase().includes(q) ||
+      h.address.toLowerCase().includes(q) ||
+      (h.tags || '').toLowerCase().includes(q))
+    .sort(compareHosts);
+  updateSortHeaders();
   const tbody = document.getElementById('hosts-tbody');
   if (hosts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text2)">No hay hosts. Añade uno con el botón superior.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text2)">${t('hosts.empty')}</td></tr>`;
     return;
   }
   tbody.innerHTML = hosts.map(h => `
@@ -274,16 +334,16 @@ function renderHostsTable(hosts) {
       <td>${h.last_rtt != null ? h.last_rtt.toFixed(1)+' ms' : '–'}</td>
       <td>${h.tags ? h.tags.split(',').map(t=>`<span class="tag">${esc(t.trim())}</span>`).join('') : '–'}</td>
       <td>
-        <button class="btn-icon" title="Comprobar ahora" onclick="checkNow(${h.id})">
+        <button class="btn-icon" title="${t('act.check')}" onclick="checkNow(${h.id})">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
         </button>
-        <button class="btn-icon" title="Historial" onclick="openHostDetail(${h.id})">
+        <button class="btn-icon" title="${t('act.history')}" onclick="openHostDetail(${h.id})">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1m0 1a6 6 0 1 1 0 12A6 6 0 0 1 8 2"/><path d="M7.5 4.75a.75.75 0 0 1 1.5 0v3.5h2a.75.75 0 0 1 0 1.5h-2.75A.75.75 0 0 1 7.5 9z"/></svg>
         </button>
-        <button class="btn-icon" title="Editar" onclick="editHost(${h.id})">
+        <button class="btn-icon" title="${t('act.edit')}" onclick="editHost(${h.id})">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.3-.799-2.982-.668 2.679-1.599.44 2.138.585.928-.722zm-2.76-3.222 5.068-5.068.943 3.531L3.272 10.285z"/></svg>
         </button>
-        <button class="btn-icon" title="Eliminar" style="color:var(--down)" onclick="deleteHost(${h.id})">
+        <button class="btn-icon" title="${t('act.delete')}" style="color:var(--down)" onclick="deleteHost(${h.id})">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
         </button>
       </td>
@@ -293,16 +353,12 @@ function renderHostsTable(hosts) {
 
 // Search filter
 document.getElementById('host-search').addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  renderHostsTable(allHosts.filter(h =>
-    h.name.toLowerCase().includes(q) ||
-    h.address.toLowerCase().includes(q) ||
-    (h.tags || '').toLowerCase().includes(q)
-  ));
+  hostQuery = e.target.value.toLowerCase();
+  renderHostsTable();
 });
 
 async function checkNow(id) {
-  toast('Comprobando host…', 'info');
+  toast(t('toast.checking'), 'info');
   const h = await api.post(`api/hosts/${id}/check`, {}).then(r => r[1]);
   toast(`${h.name}: ${statusLabel(h.current_status)}${h.last_rtt ? ' – '+h.last_rtt.toFixed(1)+'ms' : ''}`,
         h.current_status === 'up' ? 'success' : 'error');
@@ -311,9 +367,9 @@ async function checkNow(id) {
 
 async function deleteHost(id) {
   const h = allHosts.find(x => x.id === id);
-  if (!confirm(`¿Eliminar host "${h?.name}"?`)) return;
+  if (!confirm(t('confirm.deleteHost', { name: h?.name }))) return;
   await api.del(`api/hosts/${id}`);
-  toast('Host eliminado', 'info');
+  toast(t('toast.hostDeleted'), 'info');
   loadHostsTable();
   if (document.getElementById('dashboard').classList.contains('active')) loadDashboard();
 }
@@ -324,7 +380,7 @@ let editingHostId = null;
 
 async function openHostModal(host = null) {
   editingHostId = host?.id ?? null;
-  document.getElementById('host-modal-title').textContent = host ? 'Editar Host' : 'Nuevo Host';
+  document.getElementById('host-modal-title').textContent = t(host ? 'modal.editHost' : 'modal.newHost');
   const f = document.getElementById('host-form');
   f.name.value            = host?.name ?? '';
   f.address.value         = host?.address ?? '';
@@ -351,7 +407,9 @@ function editHost(id) {
   if (h) openHostModal(h);
 }
 
+let _detailId = null;
 async function openHostDetail(id) {
+  _detailId = id;
   const [h, logs] = await Promise.all([
     api.get(`api/hosts/${id}`),
     api.get(`api/hosts/${id}/logs?limit=40`),
@@ -360,24 +418,24 @@ async function openHostDetail(id) {
   document.getElementById('detail-title').textContent = h.name;
   document.getElementById('detail-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px">
-      <div><span style="color:var(--text2)">Dirección:</span> <b>${esc(h.address)}</b></div>
-      <div><span style="color:var(--text2)">Estado:</span> <span class="pill ${h.current_status}">${statusLabel(h.current_status)}</span></div>
-      <div><span style="color:var(--text2)">Comprobación:</span> ${h.check_port ? 'Puerto '+h.check_port : 'ICMP Ping'}</div>
-      <div><span style="color:var(--text2)">Intervalo:</span> ${h.check_interval}s</div>
-      <div><span style="color:var(--text2)">Último RTT:</span> ${h.last_rtt != null ? h.last_rtt.toFixed(1)+' ms' : '–'}</div>
-      <div><span style="color:var(--text2)">Última check:</span> ${h.last_check ? fmtTime(h.last_check) : '–'}</div>
+      <div><span style="color:var(--text2)">${t('det.address')}:</span> <b>${esc(h.address)}</b></div>
+      <div><span style="color:var(--text2)">${t('det.status')}:</span> <span class="pill ${h.current_status}">${statusLabel(h.current_status)}</span></div>
+      <div><span style="color:var(--text2)">${t('det.check')}:</span> ${h.check_port ? t('det.checkPort', { p: h.check_port }) : t('det.checkIcmp')}</div>
+      <div><span style="color:var(--text2)">${t('det.interval')}:</span> ${h.check_interval}s</div>
+      <div><span style="color:var(--text2)">${t('det.lastRtt')}:</span> ${h.last_rtt != null ? h.last_rtt.toFixed(1)+' ms' : '–'}</div>
+      <div><span style="color:var(--text2)">${t('det.lastCheck')}:</span> ${h.last_check ? fmtTime(h.last_check) : '–'}</div>
     </div>
-    <h4 style="font-size:12px;color:var(--text2);margin-bottom:8px">HISTORIAL RECIENTE</h4>
+    <h4 style="font-size:12px;color:var(--text2);margin-bottom:8px">${t('det.history')}</h4>
     <div style="max-height:260px;overflow-y:auto">
       ${logs.map(l => `
         <div class="log-item">
           <span class="status-dot ${l.status}" style="flex-shrink:0"></span>
           <span class="log-time">${fmtTime(l.checked_at)}</span>
           <span class="pill ${l.status}" style="font-size:10px">${statusLabel(l.status)}</span>
-          <span style="color:var(--text2);flex:1">${esc(l.message)}</span>
+          <span style="color:var(--text2);flex:1">${esc(msgLabel(l.message))}</span>
           <span class="log-rtt">${l.rtt != null ? l.rtt.toFixed(1)+' ms' : '–'}</span>
         </div>
-      `).join('') || '<p style="color:var(--text2);font-size:12px">Sin registros aún.</p>'}
+      `).join('') || `<p style="color:var(--text2);font-size:12px">${t('det.noLogs')}</p>`}
     </div>
   `;
   dlg.classList.add('open');
@@ -402,14 +460,14 @@ document.getElementById('host-form').addEventListener('submit', async e => {
     alert_on_up: f.alert_on_up.checked,
     alert_email: f.alert_email.value.trim(),
   };
-  if (!data.name || !data.address) { toast('Nombre y dirección son obligatorios', 'error'); return; }
+  if (!data.name || !data.address) { toast(t('toast.required'), 'error'); return; }
 
   if (editingHostId) {
     await api.put(`api/hosts/${editingHostId}`, data);
-    toast('Host actualizado', 'success');
+    toast(t('toast.hostUpdated'), 'success');
   } else {
     await api.post('api/hosts', data);
-    toast('Host añadido', 'success');
+    toast(t('toast.hostAdded'), 'success');
   }
   hostModal.classList.remove('open');
   loadHostsTable();
@@ -452,21 +510,21 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
     alert_down_delay_min: f.alert_down_delay_min.value,
   };
   await api.put('api/settings', data);
-  toast('Configuración guardada', 'success');
+  toast(t('toast.saved'), 'success');
 });
 
 document.getElementById('test-email-btn').addEventListener('click', async () => {
   const f = document.getElementById('settings-form');
   const to = f.alert_global_email.value.trim();
-  if (!to) { toast('Introduce un email de destino en el campo "Email global"', 'error'); return; }
-  toast('Enviando email de prueba…', 'info');
+  if (!to) { toast(t('toast.needEmail'), 'error'); return; }
+  toast(t('toast.sendingTest'), 'info');
   const [status, res] = await api.post('api/settings/test-email', {
     to, smtp_host: f.smtp_host.value, smtp_port: f.smtp_port.value,
     smtp_user: f.smtp_user.value, smtp_pass: f.smtp_pass.value,
     smtp_from: f.smtp_from.value, smtp_tls: f.smtp_tls.checked,
   });
-  if (res.ok) toast('Email de prueba enviado correctamente', 'success');
-  else toast('Error: ' + (res.error || 'desconocido'), 'error');
+  if (res.ok) toast(t('toast.testOk'), 'success');
+  else toast(t('toast.error', { e: res.error || t('toast.unknownError') }), 'error');
 });
 
 // ── MAP CANVAS ───────────────────────────────────────
@@ -508,12 +566,24 @@ function hostAt(cx, cy) {
 }
 
 // ── Draw ──────────────────────────────────────────────
+// Canvas colours follow the day/night theme (the CSS background is handled in style.css)
+const MAP_THEMES = {
+  dark:  { grid: 'rgba(255,255,255,.04)', node: '#161b22', label: '#e6edf3', sub: '#8b949e',
+           link: 'rgba(139,148,158,.35)', linkLabel: 'rgba(139,148,158,.8)',
+           status: { up: '#3fb950', down: '#f85149', unknown: '#8b949e' } },
+  light: { grid: 'rgba(0,0,0,.07)', node: '#ffffff', label: '#1f2328', sub: '#656d76',
+           link: 'rgba(101,109,118,.45)', linkLabel: 'rgba(101,109,118,.9)',
+           status: { up: '#1a7f37', down: '#cf222e', unknown: '#656d76' } },
+};
+let MC = MAP_THEMES.dark;
+
 function drawMap() {
+  MC = MAP_THEMES[document.documentElement.getAttribute('data-theme')] || MAP_THEMES.dark;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Grid
   ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,.04)';
+  ctx.strokeStyle = MC.grid;
   ctx.lineWidth = 1;
   const step = 40 * transform.scale;
   const ox = ((transform.x % step) + step) % step;
@@ -534,7 +604,7 @@ function drawMap() {
     ctx.beginPath();
     ctx.moveTo(src.map_x, src.map_y);
     ctx.lineTo(dst.map_x, dst.map_y);
-    ctx.strokeStyle = 'rgba(139,148,158,.35)';
+    ctx.strokeStyle = MC.link;
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.stroke();
@@ -542,7 +612,7 @@ function drawMap() {
     // Label
     if (lk.label) {
       const mx = (src.map_x + dst.map_x) / 2, my = (src.map_y + dst.map_y) / 2;
-      ctx.fillStyle = 'rgba(139,148,158,.8)';
+      ctx.fillStyle = MC.linkLabel;
       ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(lk.label, mx, my - 6);
@@ -555,12 +625,10 @@ function drawMap() {
   ctx.restore();
 }
 
-const COLORS = { up:'#3fb950', down:'#f85149', unknown:'#8b949e' };
-
 function drawHostNode(h) {
   const x = h.map_x, y = h.map_y;
   const r = 22;
-  const col = COLORS[h.current_status] || COLORS.unknown;
+  const col = MC.status[h.current_status] || MC.status.unknown;
 
   // Glow for down
   if (h.current_status === 'down') {
@@ -579,7 +647,7 @@ function drawHostNode(h) {
   // Circle body
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#161b22';
+  ctx.fillStyle = MC.node;
   ctx.fill();
   ctx.strokeStyle = col;
   ctx.lineWidth = 2.5;
@@ -595,11 +663,11 @@ function drawHostNode(h) {
   ctx.fill();
 
   // Label
-  ctx.fillStyle = '#e6edf3';
+  ctx.fillStyle = MC.label;
   ctx.font = `bold ${13}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.fillText(h.name, x, y + r + 15);
-  ctx.fillStyle = '#8b949e';
+  ctx.fillStyle = MC.sub;
   ctx.font = `${10}px sans-serif`;
   ctx.fillText(h.address, x, y + r + 26);
 
@@ -656,6 +724,35 @@ function drawIcon(ctx, type, x, y, col) {
       ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(0,6); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-5,2); ctx.lineTo(5,2); ctx.stroke();
+      break;
+    case 'ap': // wireless access point
+      ctx.beginPath(); ctx.arc(0, 3, 1.8, 0, Math.PI*2); ctx.fill();
+      [5, 9, 13].forEach(rad => {
+        ctx.beginPath(); ctx.arc(0, 3, rad, Math.PI*1.25, Math.PI*1.75); ctx.stroke();
+      });
+      ctx.strokeRect(-8, 7, 16, 5);
+      break;
+    case 'printer':
+      ctx.strokeRect(-6, -12, 12, 8);          // paper in
+      ctx.strokeRect(-11, -4, 22, 9);          // body
+      ctx.strokeRect(-6, 3, 12, 8);            // paper out
+      ctx.beginPath(); ctx.arc(7, -1, 1.2, 0, Math.PI*2); ctx.fill();
+      break;
+    case 'badge': // card / badge reader
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-7, -12, 14, 24, 3); else ctx.rect(-7, -12, 14, 24);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -7, 1.6, 0, Math.PI*2); ctx.fill();   // status LED
+      [3.5, 6.5].forEach(rad => {                                       // contactless waves
+        ctx.beginPath(); ctx.arc(-3, 4, rad, -0.7, 0.7); ctx.stroke();
+      });
+      ctx.beginPath(); ctx.arc(-3, 4, 1.2, 0, Math.PI*2); ctx.fill();
+      break;
+    case 'kiosk': // self-service kiosk
+      ctx.strokeRect(-7, -12, 14, 21);
+      ctx.strokeRect(-4, -9, 8, 8);                                     // screen
+      [-3, 0, 3].forEach(px => { ctx.beginPath(); ctx.arc(px, 4, 1, 0, Math.PI*2); ctx.fill(); });
+      ctx.beginPath(); ctx.moveTo(-10, 12); ctx.lineTo(10, 12); ctx.stroke();
       break;
     default: // computer / generic
       ctx.strokeRect(-9, -8, 18, 12);
@@ -761,7 +858,7 @@ canvas.addEventListener('contextmenu', e => {
   if (h) {
     // Find link from this host
     const lk = mapLinks.find(l => l.src === h.id || l.dst === h.id);
-    const action = lk && confirm(`¿Eliminar enlace de "${h.name}"?`);
+    const action = lk && confirm(t('confirm.deleteLink', { name: h.name }));
     if (action) deleteLink(lk.id);
   }
 });
@@ -794,10 +891,12 @@ linkBtn.addEventListener('click', () => {
   linkBtn.style.background = linkMode ? 'rgba(31,111,235,.3)' : '';
   linkBtn.style.color = linkMode ? '#388bfd' : '';
   drawMap();
-  document.querySelector('.map-hint').textContent = linkMode
-    ? 'Haz clic en un host origen, luego en el destino. ESC para cancelar.'
-    : 'Clic: arrastrar  |  Doble-clic: detalles  |  Rueda: zoom  |  Clic-dcho: quitar enlace';
+  updateMapHint();
 });
+
+function updateMapHint() {
+  document.querySelector('.map-hint').textContent = t(linkMode ? 'map.hintLink' : 'map.hint');
+}
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && linkMode) {
@@ -805,6 +904,7 @@ document.addEventListener('keydown', e => {
     linkBtn.style.background = '';
     linkBtn.style.color = '';
     drawMap();
+    updateMapHint();
   }
 });
 
@@ -812,15 +912,15 @@ document.getElementById('map-refresh').addEventListener('click', loadMapData);
 
 async function createLink(src, dst) {
   const [status, res] = await api.post('api/links', { src, dst });
-  if (status === 201) { mapLinks.push(res); toast('Enlace creado', 'success'); }
-  else if (status === 409) toast('El enlace ya existe', 'info');
+  if (status === 201) { mapLinks.push(res); toast(t('toast.linkCreated'), 'success'); }
+  else if (status === 409) toast(t('toast.linkExists'), 'info');
   drawMap();
 }
 
 async function deleteLink(id) {
   await api.del(`api/links/${id}`);
   mapLinks = mapLinks.filter(l => l.id !== id);
-  toast('Enlace eliminado', 'info');
+  toast(t('toast.linkDeleted'), 'info');
   drawMap();
 }
 
@@ -837,13 +937,26 @@ function esc(s) {
 }
 
 function statusLabel(s) {
-  return { up:'En línea', down:'Caído', unknown:'Desconocido' }[s] || s;
+  return ['up', 'down', 'unknown'].includes(s) ? t('status.' + s) : s;
+}
+
+// Check messages are stored in English by the backend; translate the known ones for display
+function msgLabel(m) {
+  m = m || '';
+  if (m === 'OK') return t('msg.ok');
+  if (m === 'Host unreachable') return t('msg.unreachable');
+  if (m === 'Timeout') return t('msg.timeout');
+  let r;
+  if ((r = /^Port (\d+) open$/.exec(m)))    return t('msg.portOpen', { p: r[1] });
+  if ((r = /^Port (\d+) timeout$/.exec(m))) return t('msg.portTimeout', { p: r[1] });
+  if ((r = /^Port (\d+) refused$/.exec(m))) return t('msg.portRefused', { p: r[1] });
+  return m;
 }
 
 function fmtTime(iso) {
   const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'));
-  return d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) +
-         ' ' + d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' });
+  return d.toLocaleTimeString(LOCALES[LANG], { hour:'2-digit', minute:'2-digit', second:'2-digit' }) +
+         ' ' + d.toLocaleDateString(LOCALES[LANG], { day:'2-digit', month:'2-digit' });
 }
 
 // ── Auto-refresh ──────────────────────────────────────
@@ -878,12 +991,13 @@ setInterval(() => {
     localStorage.setItem('nm_theme', theme);
     if (theme === 'light') {
       icon.innerHTML = MOON_SVG;
-      lbl.textContent = 'Modo noche';
     } else {
       icon.innerHTML = SUN_SVG;
-      lbl.textContent = 'Modo día';
     }
+    lbl.textContent = t(theme === 'light' ? 'theme.toNight' : 'theme.toDay');
+    drawMap();
   }
+  window.refreshThemeLabel = () => applyTheme(root.getAttribute('data-theme') || 'dark');
 
   const saved = localStorage.getItem('nm_theme') || 'dark';
   applyTheme(saved);
@@ -922,6 +1036,17 @@ setInterval(() => {
     el.addEventListener('click', () => { if (mq.matches) closeMobile(); }));
   mq.addEventListener('change', closeMobile);
 })();
+
+// ── Language switch: re-render everything that JS built ──
+function afterLangChange() {
+  refreshThemeLabel();
+  const active = document.querySelector('.section.active')?.id || 'dashboard';
+  navigate(active);                                   // title + reload data with translated strings
+  updateMapHint();
+  if (hostModal.classList.contains('open'))
+    document.getElementById('host-modal-title').textContent = t(editingHostId ? 'modal.editHost' : 'modal.newHost');
+  if (document.getElementById('detail-modal').classList.contains('open') && _detailId != null) openHostDetail(_detailId);
+}
 
 // ── Init ──────────────────────────────────────────────
 navigate('dashboard');
