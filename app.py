@@ -95,6 +95,25 @@ class MapLink(db.Model):
     label   = db.Column(db.String(100), default='')
 
 
+class MapShape(db.Model):
+    """Free-form annotation on the network map (transparent fill)."""
+    KINDS = ('rect', 'diamond', 'line', 'text')
+    id           = db.Column(db.Integer, primary_key=True)
+    kind         = db.Column(db.String(20), nullable=False)
+    x            = db.Column(db.Float, default=0.0)
+    y            = db.Column(db.Float, default=0.0)
+    w            = db.Column(db.Float, default=100.0)   # line: dx to second point (may be negative)
+    h            = db.Column(db.Float, default=60.0)    # line: dy to second point (may be negative)
+    text         = db.Column(db.Text, default='')
+    font_family  = db.Column(db.String(60), default='sans-serif')
+    font_size    = db.Column(db.Integer, default=16)
+    color        = db.Column(db.String(20), default='#388bfd')
+    stroke_width = db.Column(db.Float, default=2.0)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
 class Setting(db.Model):
     key   = db.Column(db.String(100), primary_key=True)
     value = db.Column(db.Text, default='')
@@ -403,6 +422,56 @@ def add_link():
 def delete_link(link_id):
     link = MapLink.query.get_or_404(link_id)
     db.session.delete(link)
+    db.session.commit()
+    return '', 204
+
+
+# Map shapes (annotations)
+SHAPE_FIELDS_NUM = {'x': float, 'y': float, 'w': float, 'h': float,
+                    'font_size': int, 'stroke_width': float}
+SHAPE_FIELDS_STR = ('text', 'font_family', 'color')
+
+
+def _apply_shape(shape, d):
+    for f, cast in SHAPE_FIELDS_NUM.items():
+        if f in d:
+            setattr(shape, f, cast(d[f]))
+    for f in SHAPE_FIELDS_STR:
+        if f in d:
+            setattr(shape, f, str(d[f]))
+    shape.font_size = max(6, min(200, shape.font_size or 16))
+    shape.stroke_width = max(0.5, min(20, shape.stroke_width or 2))
+
+
+@app.route('/api/shapes', methods=['GET'])
+def get_shapes():
+    return jsonify([s.to_dict() for s in MapShape.query.order_by(MapShape.id).all()])
+
+
+@app.route('/api/shapes', methods=['POST'])
+def add_shape():
+    d = request.json or {}
+    if d.get('kind') not in MapShape.KINDS:
+        return jsonify({'error': 'Invalid kind'}), 400
+    shape = MapShape(kind=d['kind'])
+    _apply_shape(shape, d)
+    db.session.add(shape)
+    db.session.commit()
+    return jsonify(shape.to_dict()), 201
+
+
+@app.route('/api/shapes/<int:shape_id>', methods=['PUT'])
+def update_shape(shape_id):
+    shape = MapShape.query.get_or_404(shape_id)
+    _apply_shape(shape, request.json or {})
+    db.session.commit()
+    return jsonify(shape.to_dict())
+
+
+@app.route('/api/shapes/<int:shape_id>', methods=['DELETE'])
+def delete_shape(shape_id):
+    shape = MapShape.query.get_or_404(shape_id)
+    db.session.delete(shape)
     db.session.commit()
     return '', 204
 

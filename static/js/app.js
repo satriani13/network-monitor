@@ -548,7 +548,8 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 
 async function loadMapData() {
-  [mapHosts, mapLinks] = await Promise.all([api.get('api/hosts'), api.get('api/links')]);
+  [mapHosts, mapLinks, mapShapes] = await Promise.all([api.get('api/hosts'), api.get('api/links'), api.get('api/shapes')]);
+  selectShape(null);
   resizeCanvas();
 }
 
@@ -619,8 +620,13 @@ function drawMap() {
     }
   });
 
+  // Annotation shapes (below hosts)
+  mapShapes.forEach(drawShape);
+
   // Hosts
   mapHosts.forEach(h => drawHostNode(h));
+
+  if (selShape) drawSelection(selShape);
 
   ctx.restore();
 }
@@ -763,6 +769,291 @@ function drawIcon(ctx, type, x, y, col) {
   ctx.restore();
 }
 
+// ── Map shapes (rectangle, diamond, line, text box – transparent fill) ──
+let mapShapes  = [];
+let shapeTool  = null;      // 'rect' | 'diamond' | 'line' | 'text' | null
+let selShape   = null;
+let shapeDrag  = null;      // { mode, shape, ... }
+
+const SHAPE_FONTS = ['sans-serif', 'serif', 'monospace', 'Arial', 'Verdana', 'Georgia', 'Courier New', 'Trebuchet MS'];
+const SHAPE_DEFAULTS = {
+  rect:    { w: 140, h: 90, color: '#388bfd', stroke_width: 2 },
+  diamond: { w: 120, h: 100, color: '#388bfd', stroke_width: 2 },
+  line:    { w: 140, h: 0,  color: '#388bfd', stroke_width: 2 },
+  text:    { w: 180, h: 28, color: '#6e7781', stroke_width: 1 },
+};
+const $sp = id => document.getElementById(id);
+
+function fontCss(sh) {
+  const fam = SHAPE_FONTS.includes(sh.font_family) ? sh.font_family : 'sans-serif';
+  return `${sh.font_size || 16}px ${fam.includes(' ') ? `"${fam}"` : fam}, sans-serif`;
+}
+
+// Word-wrap a text box to its width; returns { lines, lh, h } (h = real box height)
+function textLayout(sh) {
+  ctx.save();
+  ctx.font = fontCss(sh);
+  const maxW = Math.max(20, sh.w - 8), lines = [];
+  String(sh.text || '').split('\n').forEach(par => {
+    let line = '';
+    par.split(' ').forEach(word => {
+      const test = line ? line + ' ' + word : word;
+      if (line && ctx.measureText(test).width > maxW) { lines.push(line); line = word; }
+      else line = test;
+    });
+    lines.push(line);
+  });
+  ctx.restore();
+  const lh = (sh.font_size || 16) * 1.25;
+  return { lines, lh, h: Math.max(sh.h, lines.length * lh + 8) };
+}
+
+function shapeBox(sh) {
+  return sh.kind === 'text' ? { x: sh.x, y: sh.y, w: sh.w, h: textLayout(sh).h } : { x: sh.x, y: sh.y, w: sh.w, h: sh.h };
+}
+
+function drawShape(sh) {
+  ctx.save();
+  ctx.strokeStyle = ctx.fillStyle = sh.color || '#388bfd';
+  ctx.lineWidth = sh.stroke_width || 2;
+  ctx.lineJoin = ctx.lineCap = 'round';
+  const { x, y, w, h } = sh;
+  if (sh.kind === 'rect') {
+    ctx.strokeRect(x, y, w, h);
+  } else if (sh.kind === 'diamond') {
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2);
+    ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2);
+    ctx.closePath(); ctx.stroke();
+  } else if (sh.kind === 'line') {
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y + h); ctx.stroke();
+  } else if (sh.kind === 'text') {
+    const L = textLayout(sh);
+    ctx.font = fontCss(sh);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    L.lines.forEach((ln, i) => ctx.fillText(ln, x + 4, y + 4 + i * L.lh));
+  }
+  ctx.restore();
+}
+
+function shapeHandles(sh) {
+  if (sh.kind === 'line') return [{ id: 'p1', x: sh.x, y: sh.y }, { id: 'p2', x: sh.x + sh.w, y: sh.y + sh.h }];
+  const b = shapeBox(sh);
+  return [
+    { id: 'nw', x: b.x, y: b.y }, { id: 'ne', x: b.x + b.w, y: b.y },
+    { id: 'sw', x: b.x, y: b.y + b.h }, { id: 'se', x: b.x + b.w, y: b.y + b.h },
+  ];
+}
+
+function drawSelection(sh) {
+  const k = 1 / transform.scale;
+  ctx.save();
+  if (sh.kind !== 'line') {
+    const b = shapeBox(sh);
+    ctx.strokeStyle = '#388bfd'; ctx.lineWidth = k; ctx.setLineDash([5 * k, 4 * k]);
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    ctx.setLineDash([]);
+  }
+  shapeHandles(sh).forEach(p => {
+    const r = 4.5 * k;
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#388bfd'; ctx.lineWidth = 1.5 * k;
+    ctx.fillRect(p.x - r, p.y - r, 2 * r, 2 * r);
+    ctx.strokeRect(p.x - r, p.y - r, 2 * r, 2 * r);
+  });
+  ctx.restore();
+}
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+  const u = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+  return Math.hypot(px - (ax + u * dx), py - (ay + u * dy));
+}
+
+function shapeHit(sh, p) {
+  const tol = 7 / transform.scale;
+  const { x, y, w, h } = sh;
+  if (sh.kind === 'line') return distToSegment(p.x, p.y, x, y, x + w, y + h) <= tol;
+  if (sh.kind === 'text') { const b = shapeBox(sh); return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; }
+  if (sh.kind === 'diamond') {
+    const pts = [[x + w / 2, y], [x + w, y + h / 2], [x + w / 2, y + h], [x, y + h / 2]];
+    return pts.some((a, i) => { const b = pts[(i + 1) % 4]; return distToSegment(p.x, p.y, a[0], a[1], b[0], b[1]) <= tol; });
+  }
+  // rect: border only (transparent inside, so the map can still be panned)
+  const outer = p.x >= x - tol && p.x <= x + w + tol && p.y >= y - tol && p.y <= y + h + tol;
+  const inner = p.x > x + tol && p.x < x + w - tol && p.y > y + tol && p.y < y + h - tol;
+  return outer && !inner;
+}
+
+function shapeAt(p) {
+  for (let i = mapShapes.length - 1; i >= 0; i--) if (shapeHit(mapShapes[i], p)) return mapShapes[i];
+  return null;
+}
+
+function handleAt(p) {
+  if (!selShape) return null;
+  const tol = 9 / transform.scale;
+  return shapeHandles(selShape).find(hd => Math.hypot(hd.x - p.x, hd.y - p.y) <= tol) || null;
+}
+
+// Persist (debounced per shape)
+const _saveTimers = {};
+function saveShape(sh, delay = 0) {
+  if (!sh.id) return;
+  clearTimeout(_saveTimers[sh.id]);
+  _saveTimers[sh.id] = setTimeout(() => api.put(`api/shapes/${sh.id}`, {
+    x: sh.x, y: sh.y, w: sh.w, h: sh.h, text: sh.text, font_family: sh.font_family,
+    font_size: sh.font_size, color: sh.color, stroke_width: sh.stroke_width,
+  }), delay);
+}
+
+async function createShape(data) {
+  const [status, res] = await api.post('api/shapes', data);
+  return status === 201 ? res : null;
+}
+
+// ── Property panel ──
+function selectShape(sh) {
+  selShape = sh;
+  const panel = $sp('shape-panel');
+  panel.hidden = !sh;
+  if (sh) {
+    const isText = sh.kind === 'text';
+    $sp('sp-color').value = /^#[0-9a-f]{6}$/i.test(sh.color) ? sh.color : '#388bfd';
+    $sp('sp-width').value = sh.stroke_width;
+    $sp('sp-width').style.display = $sp('sp-width').previousElementSibling.style.display = isText ? 'none' : '';
+    $sp('sp-text-fields').style.display = isText ? '' : 'none';
+    $sp('sp-text').value = sh.text || '';
+    $sp('sp-font').value = SHAPE_FONTS.includes(sh.font_family) ? sh.font_family : 'sans-serif';
+    $sp('sp-size').value = sh.font_size;
+  }
+  drawMap();
+}
+
+$sp('sp-font').innerHTML = SHAPE_FONTS.map(f => `<option value="${f}" style="font-family:'${f}'">${f}</option>`).join('');
+
+function bindPanel(id, apply) {
+  $sp(id).addEventListener('input', () => {
+    if (!selShape) return;
+    apply(selShape, $sp(id).value);
+    drawMap();
+    saveShape(selShape, 300);
+  });
+}
+bindPanel('sp-color', (s, v) => { s.color = v; });
+bindPanel('sp-width', (s, v) => { s.stroke_width = Math.max(1, Math.min(12, Number(v) || 1)); });
+bindPanel('sp-text',  (s, v) => { s.text = v; });
+bindPanel('sp-font',  (s, v) => { s.font_family = v; });
+bindPanel('sp-size',  (s, v) => { s.font_size = Math.max(8, Math.min(120, Math.round(Number(v)) || 16)); });
+
+async function deleteSelectedShape() {
+  if (!selShape) return;
+  const sh = selShape;
+  selectShape(null);
+  mapShapes = mapShapes.filter(x => x !== sh);
+  drawMap();
+  if (sh.id) await api.del(`api/shapes/${sh.id}`);
+}
+$sp('sp-delete').addEventListener('click', deleteSelectedShape);
+$sp('sp-close').addEventListener('click', () => selectShape(null));
+
+// ── Tools ──
+function setShapeTool(kind) {
+  shapeTool = kind === shapeTool ? null : kind;
+  if (shapeTool && linkMode) {                 // tools and link mode are mutually exclusive
+    linkMode = false; linkSrc = null;
+    linkBtn.style.background = ''; linkBtn.style.color = '';
+  }
+  document.querySelectorAll('.shape-tool').forEach(b => b.classList.toggle('active', b.dataset.shape === shapeTool));
+  canvas.style.cursor = shapeTool ? 'crosshair' : 'default';
+  drawMap();
+  updateMapHint();
+}
+document.querySelectorAll('.shape-tool').forEach(b => b.addEventListener('click', () => setShapeTool(b.dataset.shape)));
+
+async function beginShapeDraw(p) {
+  const kind = shapeTool;
+  const d = SHAPE_DEFAULTS[kind];
+  setShapeTool(kind);                           // toggles the tool off: one shape per click
+  if (kind === 'text') {
+    const data = { kind, x: p.x, y: p.y, ...d, text: t('shape.defaultText'), font_family: 'sans-serif', font_size: 16 };
+    const sh = await createShape(data);
+    if (!sh) return;
+    mapShapes.push(sh);
+    selectShape(sh);
+    $sp('sp-text').focus(); $sp('sp-text').select();
+    return;
+  }
+  const sh = { kind, x: p.x, y: p.y, w: 0, h: 0, text: '', font_family: 'sans-serif', font_size: 16,
+               color: d.color, stroke_width: d.stroke_width };
+  mapShapes.push(sh);
+  selShape = sh;
+  shapeDrag = { mode: 'draw', shape: sh, start: p, moved: false };
+}
+
+function beginShapeResize(hd, p) {
+  const sh = selShape;
+  const b = shapeBox(sh);
+  const opposite = { nw: [b.x + b.w, b.y + b.h], ne: [b.x, b.y + b.h], sw: [b.x + b.w, b.y], se: [b.x, b.y] }[hd.id];
+  shapeDrag = { mode: 'resize', shape: sh, handle: hd.id, anchor: opposite ? { x: opposite[0], y: opposite[1] } : null, moved: false };
+}
+
+function updateShapeDrag(p) {
+  const d = shapeDrag, sh = d.shape;
+  d.moved = true;
+  if (d.mode === 'move') {
+    sh.x = p.x - d.ox; sh.y = p.y - d.oy;
+  } else if (d.mode === 'draw') {
+    if (sh.kind === 'line') { sh.w = p.x - d.start.x; sh.h = p.y - d.start.y; }
+    else { sh.x = Math.min(d.start.x, p.x); sh.y = Math.min(d.start.y, p.y); sh.w = Math.abs(p.x - d.start.x); sh.h = Math.abs(p.y - d.start.y); }
+  } else if (d.mode === 'resize') {
+    if (d.handle === 'p1') { const x2 = sh.x + sh.w, y2 = sh.y + sh.h; sh.x = p.x; sh.y = p.y; sh.w = x2 - p.x; sh.h = y2 - p.y; }
+    else if (d.handle === 'p2') { sh.w = p.x - sh.x; sh.h = p.y - sh.y; }
+    else {
+      sh.x = Math.min(d.anchor.x, p.x); sh.y = Math.min(d.anchor.y, p.y);
+      sh.w = Math.max(20, Math.abs(p.x - d.anchor.x));
+      sh.h = Math.max(sh.kind === 'text' ? 0 : 10, Math.abs(p.y - d.anchor.y));
+    }
+  }
+  drawMap();
+}
+
+async function finishShapeDrag() {
+  const d = shapeDrag;
+  shapeDrag = null;
+  canvas.style.cursor = shapeTool ? 'crosshair' : 'default';
+  const sh = d.shape;
+  if (d.mode === 'draw') {
+    const tiny = sh.kind === 'line' ? Math.hypot(sh.w, sh.h) < 6 : (sh.w < 6 && sh.h < 6);
+    if (tiny) { const def = SHAPE_DEFAULTS[sh.kind]; sh.w = def.w; sh.h = def.h; if (sh.kind !== 'line') { sh.x = d.start.x; sh.y = d.start.y; } }
+    const saved = await createShape(sh);
+    if (!saved) { mapShapes = mapShapes.filter(x => x !== sh); selShape = null; drawMap(); return; }
+    Object.assign(sh, saved);
+    selectShape(sh);
+  } else if (d.moved) {
+    saveShape(sh);
+  }
+}
+
+window.addEventListener('mousemove', e => {
+  if (!shapeDrag) return;
+  const rect = canvas.getBoundingClientRect();
+  updateShapeDrag(toWorld(e.clientX - rect.left, e.clientY - rect.top));
+});
+window.addEventListener('mouseup', () => { if (shapeDrag) finishShapeDrag(); });
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('map').classList.contains('active')) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+  if (e.key === 'Escape') {
+    if (shapeDrag) return;
+    if (shapeTool) setShapeTool(shapeTool);
+    else if (selShape) selectShape(null);
+  } else if ((e.key === 'Delete' || e.key === 'Backspace') && selShape && !typing) {
+    e.preventDefault();
+    deleteSelectedShape();
+  }
+});
+
 // ── Map interactions ──────────────────────────────────
 canvas.addEventListener('mousedown', e => {
   const rect  = canvas.getBoundingClientRect();
@@ -784,6 +1075,23 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
 
+  if (e.button === 0) {
+    const wp = toWorld(cx, cy);
+    if (shapeTool) { beginShapeDraw(wp); return; }
+    const hd = handleAt(wp);
+    if (hd) { beginShapeResize(hd, wp); return; }
+    if (!h) {
+      const sh = shapeAt(wp);
+      if (sh) {
+        selectShape(sh);
+        shapeDrag = { mode: 'move', shape: sh, ox: wp.x - sh.x, oy: wp.y - sh.y, moved: false };
+        canvas.style.cursor = 'move';
+        return;
+      }
+    }
+    if (selShape) selectShape(null);
+  }
+
   if (h) {
     drag = { host: h, ox: toWorld(cx, cy).x - h.map_x, oy: toWorld(cx, cy).y - h.map_y };
     canvas.style.cursor = 'grabbing';
@@ -801,6 +1109,7 @@ canvas.addEventListener('mousemove', e => {
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
 
+  if (shapeDrag) return;
   if (drag) {
     const w = toWorld(cx, cy);
     drag.host.map_x = w.x - drag.ox;
@@ -816,7 +1125,11 @@ canvas.addEventListener('mousemove', e => {
   }
 
   const h = hostAt(cx, cy);
-  canvas.style.cursor = h ? (linkMode ? 'crosshair' : 'pointer') : (linkMode ? 'crosshair' : 'default');
+  const wp = toWorld(cx, cy);
+  canvas.style.cursor = h ? (linkMode ? 'crosshair' : 'pointer')
+    : (linkMode || shapeTool) ? 'crosshair'
+    : handleAt(wp) ? 'pointer'
+    : shapeAt(wp) ? 'move' : 'default';
 });
 
 canvas.addEventListener('mouseup', async e => {
@@ -847,8 +1160,11 @@ canvas.addEventListener('wheel', e => {
 
 canvas.addEventListener('dblclick', e => {
   const rect = canvas.getBoundingClientRect();
-  const h = hostAt(e.clientX - rect.left, e.clientY - rect.top);
-  if (h) openHostDetail(h.id);
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const h = hostAt(cx, cy);
+  if (h) { openHostDetail(h.id); return; }
+  const sh = shapeAt(toWorld(cx, cy));
+  if (sh?.kind === 'text') { selectShape(sh); $sp('sp-text').focus(); }
 });
 
 canvas.addEventListener('contextmenu', e => {
@@ -888,6 +1204,7 @@ const linkBtn = document.getElementById('map-link-btn');
 linkBtn.addEventListener('click', () => {
   linkMode = !linkMode;
   linkSrc = null;
+  if (linkMode && shapeTool) setShapeTool(shapeTool);
   linkBtn.style.background = linkMode ? 'rgba(31,111,235,.3)' : '';
   linkBtn.style.color = linkMode ? '#388bfd' : '';
   drawMap();
@@ -895,7 +1212,8 @@ linkBtn.addEventListener('click', () => {
 });
 
 function updateMapHint() {
-  document.querySelector('.map-hint').textContent = t(linkMode ? 'map.hintLink' : 'map.hint');
+  const key = linkMode ? 'map.hintLink' : shapeTool ? (shapeTool === 'text' ? 'map.hintText' : 'map.hintDraw') : 'map.hint';
+  document.querySelector('.map-hint').textContent = t(key);
 }
 
 document.addEventListener('keydown', e => {

@@ -41,6 +41,11 @@ const I18N = {
     'map.link': 'Enlazar hosts', 'map.refresh': '↺ Actualizar',
     'map.hint': 'Clic: arrastrar  |  Doble-clic: detalles  |  Rueda: zoom  |  Clic-dcho: quitar enlace',
     'map.hintLink': 'Haz clic en un host origen, luego en el destino. ESC para cancelar.',
+    'map.hintDraw': 'Arrastra sobre el mapa para dibujar. ESC para cancelar.',
+    'map.hintText': 'Haz clic donde quieras colocar el texto. ESC para cancelar.',
+    'shape.rect': 'Cuadro', 'shape.diamond': 'Rombo', 'shape.line': 'Línea', 'shape.text': 'Texto',
+    'shape.color': 'Color', 'shape.width': 'Grosor', 'shape.font': 'Fuente', 'shape.size': 'Tamaño',
+    'shape.delete': 'Eliminar', 'shape.defaultText': 'Texto',
 
     'set.smtpTitle': 'Servidor SMTP (envío de alertas)',
     'set.smtpHost': 'Servidor SMTP', 'set.port': 'Puerto', 'set.user': 'Usuario',
@@ -127,6 +132,11 @@ const I18N = {
     'map.link': 'Link hosts', 'map.refresh': '↺ Refresh',
     'map.hint': 'Click: drag  |  Double-click: details  |  Wheel: zoom  |  Right-click: remove link',
     'map.hintLink': 'Click a source host, then the destination. ESC to cancel.',
+    'map.hintDraw': 'Drag on the map to draw. ESC to cancel.',
+    'map.hintText': 'Click where you want the text. ESC to cancel.',
+    'shape.rect': 'Box', 'shape.diamond': 'Diamond', 'shape.line': 'Line', 'shape.text': 'Text',
+    'shape.color': 'Color', 'shape.width': 'Width', 'shape.font': 'Font', 'shape.size': 'Size',
+    'shape.delete': 'Delete', 'shape.defaultText': 'Text',
 
     'set.smtpTitle': 'SMTP server (alert delivery)',
     'set.smtpHost': 'SMTP server', 'set.port': 'Port', 'set.user': 'User',

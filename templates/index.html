@@ -181,10 +181,50 @@
         <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-4H9q-.13 0-.25.031A2 2 0 0 1 7 10.5H4a2 2 0 1 1 0-4h1.535c.218-.376.495-.714.82-1z"/><path d="M9 5.5a3 3 0 0 0-2.83 4h1.098A2 2 0 0 1 9 6.5h3a2 2 0 1 1 0 4h-1.535a4 4 0 0 1-.82 1H12a3 3 0 1 0 0-6z"/></svg>
         <span data-i18n="map.link">Enlazar hosts</span>
       </button>
+      <div class="map-toolbar-sep"></div>
+      <button class="btn btn-ghost btn-sm shape-tool" data-shape="rect" data-i18n-title="shape.rect" title="Cuadro">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1"/></svg>
+        <span data-i18n="shape.rect">Cuadro</span>
+      </button>
+      <button class="btn btn-ghost btn-sm shape-tool" data-shape="diamond" data-i18n-title="shape.diamond" title="Rombo">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
+        <span data-i18n="shape.diamond">Rombo</span>
+      </button>
+      <button class="btn btn-ghost btn-sm shape-tool" data-shape="line" data-i18n-title="shape.line" title="Línea">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 13.5 13.5 2.5"/></svg>
+        <span data-i18n="shape.line">Línea</span>
+      </button>
+      <button class="btn btn-ghost btn-sm shape-tool" data-shape="text" data-i18n-title="shape.text" title="Texto">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 3.5A.5.5 0 0 1 3 3h10a.5.5 0 0 1 .5.5V5a.5.5 0 0 1-1 0V4H8.5v8H10a.5.5 0 0 1 0 1H6a.5.5 0 0 1 0-1h1.5V4h-4v1a.5.5 0 0 1-1 0z"/></svg>
+        <span data-i18n="shape.text">Texto</span>
+      </button>
       <button class="btn btn-ghost btn-sm" id="map-refresh" data-i18n="map.refresh">↺ Actualizar</button>
       <span class="map-hint" data-i18n="map.hint">Clic: arrastrar &nbsp;|&nbsp; Doble-clic: detalles &nbsp;|&nbsp; Rueda: zoom &nbsp;|&nbsp; Clic-dcho: quitar enlace</span>
     </div>
     <canvas id="mapCanvas"></canvas>
+    <div class="shape-panel" id="shape-panel" hidden>
+      <div class="shape-row">
+        <label for="sp-color" data-i18n="shape.color">Color</label>
+        <input type="color" id="sp-color">
+        <label for="sp-width" data-i18n="shape.width">Grosor</label>
+        <input type="number" id="sp-width" min="1" max="12" step="1">
+      </div>
+      <div id="sp-text-fields">
+        <textarea id="sp-text" rows="3"></textarea>
+        <div class="shape-row">
+          <label for="sp-font" data-i18n="shape.font">Fuente</label>
+          <select id="sp-font"></select>
+        </div>
+        <div class="shape-row">
+          <label for="sp-size" data-i18n="shape.size">Tamaño</label>
+          <input type="number" id="sp-size" min="8" max="120" step="1">
+        </div>
+      </div>
+      <div class="shape-row">
+        <button type="button" class="btn btn-danger btn-sm" id="sp-delete" data-i18n="shape.delete">Eliminar</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="sp-close" data-i18n="btn.close">Cerrar</button>
+      </div>
+    </div>
   </section>
 
   <!-- Settings -->
