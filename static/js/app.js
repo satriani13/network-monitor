@@ -780,9 +780,13 @@ const SHAPE_DEFAULTS = {
   rect:    { w: 140, h: 90, color: '#388bfd', stroke_width: 2 },
   diamond: { w: 120, h: 100, color: '#388bfd', stroke_width: 2 },
   line:    { w: 140, h: 0,  color: '#388bfd', stroke_width: 2 },
-  text:    { w: 180, h: 28, color: '#6e7781', stroke_width: 1 },
+  text:    { w: 180, h: 28, color: '', stroke_width: 1 },   // '' = automatic: follows the day/night theme
 };
 const $sp = id => document.getElementById(id);
+
+// Automatic colour = the map's label colour for the current theme (dark in day mode, light in night mode)
+const themeInk = () => (MAP_THEMES[document.documentElement.getAttribute('data-theme')] || MAP_THEMES.dark).label;
+const shapeInk = sh => sh.color || themeInk();
 
 function fontCss(sh) {
   const fam = SHAPE_FONTS.includes(sh.font_family) ? sh.font_family : 'sans-serif';
@@ -814,7 +818,7 @@ function shapeBox(sh) {
 
 function drawShape(sh) {
   ctx.save();
-  ctx.strokeStyle = ctx.fillStyle = sh.color || '#388bfd';
+  ctx.strokeStyle = ctx.fillStyle = shapeInk(sh);
   ctx.lineWidth = sh.stroke_width || 2;
   ctx.lineJoin = ctx.lineCap = 'round';
   const { x, y, w, h } = sh;
@@ -918,7 +922,10 @@ function selectShape(sh) {
   panel.hidden = !sh;
   if (sh) {
     const isText = sh.kind === 'text';
-    $sp('sp-color').value = /^#[0-9a-f]{6}$/i.test(sh.color) ? sh.color : '#388bfd';
+    const auto = !sh.color;
+    $sp('sp-auto').checked = auto;
+    $sp('sp-color').disabled = auto;
+    $sp('sp-color').value = /^#[0-9a-f]{6}$/i.test(shapeInk(sh)) ? shapeInk(sh) : '#388bfd';
     $sp('sp-width').value = sh.stroke_width;
     $sp('sp-width').style.display = $sp('sp-width').previousElementSibling.style.display = isText ? 'none' : '';
     $sp('sp-text-fields').style.display = isText ? '' : 'none';
@@ -940,6 +947,12 @@ function bindPanel(id, apply) {
   });
 }
 bindPanel('sp-color', (s, v) => { s.color = v; });
+$sp('sp-auto').addEventListener('change', () => {
+  if (!selShape) return;
+  selShape.color = $sp('sp-auto').checked ? '' : $sp('sp-color').value;
+  selectShape(selShape);
+  saveShape(selShape);
+});
 bindPanel('sp-width', (s, v) => { s.stroke_width = Math.max(1, Math.min(12, Number(v) || 1)); });
 bindPanel('sp-text',  (s, v) => { s.text = v; });
 bindPanel('sp-font',  (s, v) => { s.font_family = v; });
@@ -1313,7 +1326,7 @@ setInterval(() => {
       icon.innerHTML = SUN_SVG;
     }
     lbl.textContent = t(theme === 'light' ? 'theme.toNight' : 'theme.toDay');
-    drawMap();
+    if (selShape) selectShape(selShape); else drawMap();   // refresh the panel's automatic colour too
   }
   window.refreshThemeLabel = () => applyTheme(root.getAttribute('data-theme') || 'dark');
 

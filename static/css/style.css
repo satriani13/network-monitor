@@ -415,7 +415,7 @@ tbody td { padding: 10px 12px; font-size: 13px; }
   box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 10px;
 }
 .shape-panel[hidden] { display: none; }
-.shape-row { display: flex; align-items: center; gap: 8px; }
+.shape-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .shape-row label { flex-shrink: 0; }
 .shape-row input[type=number], .shape-row select { padding: 5px 8px; }
 .shape-row input[type=color] { width: 38px; height: 28px; padding: 1px 2px; cursor: pointer; flex-shrink: 0; }

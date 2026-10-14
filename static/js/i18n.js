@@ -45,7 +45,7 @@ const I18N = {
     'map.hintText': 'Haz clic donde quieras colocar el texto. ESC para cancelar.',
     'shape.rect': 'Cuadro', 'shape.diamond': 'Rombo', 'shape.line': 'Línea', 'shape.text': 'Texto',
     'shape.color': 'Color', 'shape.width': 'Grosor', 'shape.font': 'Fuente', 'shape.size': 'Tamaño',
-    'shape.delete': 'Eliminar', 'shape.defaultText': 'Texto',
+    'shape.delete': 'Eliminar', 'shape.defaultText': 'Texto', 'shape.auto': 'Auto',
 
     'set.smtpTitle': 'Servidor SMTP (envío de alertas)',
     'set.smtpHost': 'Servidor SMTP', 'set.port': 'Puerto', 'set.user': 'Usuario',
@@ -136,7 +136,7 @@ const I18N = {
     'map.hintText': 'Click where you want the text. ESC to cancel.',
     'shape.rect': 'Box', 'shape.diamond': 'Diamond', 'shape.line': 'Line', 'shape.text': 'Text',
     'shape.color': 'Color', 'shape.width': 'Width', 'shape.font': 'Font', 'shape.size': 'Size',
-    'shape.delete': 'Delete', 'shape.defaultText': 'Text',
+    'shape.delete': 'Delete', 'shape.defaultText': 'Text', 'shape.auto': 'Auto',
 
     'set.smtpTitle': 'SMTP server (alert delivery)',
     'set.smtpHost': 'SMTP server', 'set.port': 'Port', 'set.user': 'User',
