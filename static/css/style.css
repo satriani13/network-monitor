@@ -382,6 +382,7 @@ tbody td { padding: 10px 12px; font-size: 13px; }
 .pill.down  { background: rgba(248,81,73,.15); color: var(--down); }
 .pill.unknown { background: rgba(139,148,158,.15); color: var(--unknown); }
 
+.icon-cell { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .tag {
   display: inline-block; padding: 1px 6px; border-radius: 4px;
   background: var(--bg3); color: var(--text2); font-size: 11px; margin: 1px;
@@ -542,7 +543,7 @@ input[type=checkbox] { width: auto; }
   .hosts-toolbar #host-search { max-width: none !important; flex: 1 1 100%; }
 
   .table-wrap { padding: 0 12px 16px; overflow-x: auto; }
-  .table-wrap table { min-width: 620px; }
+  .table-wrap table { min-width: 760px; }
 
   .map-toolbar { padding: 8px 12px; }
   .map-hint { display: none; }

@@ -252,7 +252,7 @@ let hostQuery = '';
 let hostSort = { key: 'name', dir: 1 };
 try {
   const saved = JSON.parse(localStorage.getItem('nm_host_sort'));
-  if (saved && ['name', 'address', 'status'].includes(saved.key) && (saved.dir === 1 || saved.dir === -1)) hostSort = saved;
+  if (saved && ['name', 'address', 'icon', 'status'].includes(saved.key) && (saved.dir === 1 || saved.dir === -1)) hostSort = saved;
 } catch {}
 
 const STATUS_RANK = { down: 0, unknown: 1, up: 2 };
@@ -261,6 +261,25 @@ const STATUS_RANK = { down: 0, unknown: 1, up: 2 };
 function ipKey(addr) {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec((addr || '').trim());
   return m ? ((+m[1] * 256 + +m[2]) * 256 + +m[3]) * 256 + +m[4] : null;
+}
+
+// Device category (the "Icono" field) shown as a small glyph + its translated name
+function iconLabel(type) {
+  const key = 'icon.' + (type || 'computer');
+  return I18N.es[key] ? t(key) : (type || '');
+}
+
+const _iconImgCache = {};
+function iconImg(type) {
+  const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const k = theme + ':' + (type || 'computer');
+  if (!_iconImgCache[k]) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 40;                                  // drawn at 2x, shown at 20px
+    drawIcon(c.getContext('2d'), type || 'computer', 20, 20, theme === 'light' ? '#656d76' : '#8b949e');
+    _iconImgCache[k] = c.toDataURL();
+  }
+  return _iconImgCache[k];
 }
 
 function byName(a, b) {
@@ -275,6 +294,8 @@ function compareHosts(a, b) {
     else if (ka !== null) r = -1;            // IPs before hostnames
     else if (kb !== null) r = 1;
     else r = a.address.localeCompare(b.address, LANG, { numeric: true, sensitivity: 'base' });
+  } else if (hostSort.key === 'icon') {
+    r = iconLabel(a.icon_type).localeCompare(iconLabel(b.icon_type), LANG, { sensitivity: 'base' });
   } else if (hostSort.key === 'status') {
     r = (STATUS_RANK[a.current_status] ?? 1) - (STATUS_RANK[b.current_status] ?? 1);
   } else {
@@ -318,7 +339,7 @@ function renderHostsTable() {
   updateSortHeaders();
   const tbody = document.getElementById('hosts-tbody');
   if (hosts.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text2)">${t('hosts.empty')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">${t('hosts.empty')}</td></tr>`;
     return;
   }
   tbody.innerHTML = hosts.map(h => `
@@ -328,6 +349,7 @@ function renderHostsTable() {
         <b>${esc(h.name)}</b>
       </td>
       <td>${esc(h.address)}</td>
+      <td><span class="icon-cell"><img src="${iconImg(h.icon_type)}" width="20" height="20" alt="">${esc(iconLabel(h.icon_type))}</span></td>
       <td>${h.check_port || 'Ping'}</td>
       <td>${h.check_interval}s</td>
       <td><span class="pill ${h.current_status}">${statusLabel(h.current_status)}</span></td>
@@ -1455,6 +1477,7 @@ setInterval(() => {
       icon.innerHTML = SUN_SVG;
     }
     lbl.textContent = t(theme === 'light' ? 'theme.toNight' : 'theme.toDay');
+    if (document.getElementById('hosts').classList.contains('active')) renderHostsTable();   // icon glyph colours
     if (selShape) selectShape(selShape); else drawMap();   // refresh the panel's automatic colour too
   }
   window.refreshThemeLabel = () => applyTheme(root.getAttribute('data-theme') || 'dark');
