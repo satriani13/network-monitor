@@ -408,7 +408,7 @@ tbody td { padding: 10px 12px; font-size: 13px; }
 
 /* ── Map shapes ── */
 #map { position: relative; }
-.shape-tool.active { background: rgba(31,111,235,.3); color: var(--accent2); border-color: var(--accent2); }
+#map-select-btn.active, .shape-tool.active { background: rgba(31,111,235,.3); color: var(--accent2); border-color: var(--accent2); }
 .shape-panel {
   position: absolute; top: 64px; right: 14px; width: 230px; z-index: 5;
   background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
