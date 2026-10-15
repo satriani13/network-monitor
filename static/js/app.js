@@ -779,6 +779,25 @@ function drawIcon(ctx, type, x, y, col) {
       [-3, 0, 3].forEach(px => { ctx.beginPath(); ctx.arc(px, 4, 1, 0, Math.PI*2); ctx.fill(); });
       ctx.beginPath(); ctx.moveTo(-10, 12); ctx.lineTo(10, 12); ctx.stroke();
       break;
+    case 'videoconf': // video-conference camera
+      ctx.strokeRect(-11, -6, 15, 12);
+      ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(11, -5); ctx.lineTo(11, 5); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-4, 0, 2.2, 0, Math.PI*2); ctx.fill();
+      break;
+    case 'ups': // battery backup with bolt
+      ctx.strokeRect(-10, -8, 20, 18);
+      ctx.fillRect(-3, -12, 6, 4);
+      ctx.beginPath();
+      ctx.moveTo(2, -5); ctx.lineTo(-4, 2); ctx.lineTo(0, 2); ctx.lineTo(-2, 8); ctx.lineTo(4, 0); ctx.lineTo(0, 0); ctx.closePath();
+      ctx.fill();
+      break;
+    case 'pbx': // VoIP desk phone / PBX
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(-11, -10, 22, 5, 2); else ctx.rect(-11, -10, 22, 5);
+      ctx.stroke();
+      ctx.strokeRect(-10, -3, 20, 13);
+      [-4, 0, 4].forEach(px => [1, 5].forEach(py => { ctx.beginPath(); ctx.arc(px, py, 1, 0, Math.PI*2); ctx.fill(); }));
+      break;
     default: // computer / generic
       ctx.strokeRect(-9, -8, 18, 12);
       ctx.beginPath(); ctx.moveTo(-5,4); ctx.lineTo(-5,9); ctx.lineTo(5,9); ctx.lineTo(5,4); ctx.stroke();

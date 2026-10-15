@@ -75,6 +75,7 @@ const I18N = {
     'icon.computer': 'Ordenador / Genérico', 'icon.server': 'Servidor', 'icon.router': 'Router',
     'icon.switch': 'Switch', 'icon.firewall': 'Firewall', 'icon.ap': 'Punto de acceso (AP)',
     'icon.printer': 'Impresora', 'icon.badge': 'Lector de acceso (badge)', 'icon.kiosk': 'Kiosko',
+    'icon.videoconf': 'Videoconferencia', 'icon.ups': 'SAI / UPS', 'icon.pbx': 'Centralita VoIP (PBX)',
     'btn.cancel': 'Cancelar', 'btn.save': 'Guardar', 'btn.close': 'Cerrar',
 
     'det.address': 'Dirección', 'det.status': 'Estado', 'det.check': 'Comprobación',
@@ -169,6 +170,7 @@ const I18N = {
     'icon.computer': 'Computer / Generic', 'icon.server': 'Server', 'icon.router': 'Router',
     'icon.switch': 'Switch', 'icon.firewall': 'Firewall', 'icon.ap': 'Access Point (AP)',
     'icon.printer': 'Printer', 'icon.badge': 'Badge reader', 'icon.kiosk': 'Kiosk',
+    'icon.videoconf': 'Videoconference', 'icon.ups': 'UPS', 'icon.pbx': 'VoIP PBX',
     'btn.cancel': 'Cancel', 'btn.save': 'Save', 'btn.close': 'Close',
 
     'det.address': 'Address', 'det.status': 'Status', 'det.check': 'Check type',
