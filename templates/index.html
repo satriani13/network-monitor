@@ -154,10 +154,16 @@
       </button>
       <button class="btn btn-ghost" onclick="loadHostsTable()" data-i18n="hosts.refresh">Actualizar</button>
     </div>
+    <div class="bulk-bar" id="bulk-bar" hidden>
+      <span id="bulk-count"></span>
+      <button type="button" class="btn btn-primary btn-sm" id="bulk-edit-btn" data-i18n="bulk.edit">Editar en bloque</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="bulk-clear" data-i18n="bulk.clear">Deseleccionar</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th class="col-check"><input type="checkbox" id="bulk-all" data-i18n-title="bulk.selectAll" title="Seleccionar todos"></th>
             <th class="sortable" data-sort="name" data-i18n="th.name" data-i18n-title="sort.hint">Nombre</th>
             <th class="sortable" data-sort="address" data-i18n="th.address" data-i18n-title="sort.hint">Dirección</th>
             <th class="sortable" data-sort="icon" data-i18n="th.icon" data-i18n-title="sort.hint">Icono</th>
@@ -207,6 +213,7 @@
       <span class="map-hint" data-i18n="map.hint">Clic: arrastrar &nbsp;|&nbsp; Doble-clic: detalles &nbsp;|&nbsp; Rueda: zoom &nbsp;|&nbsp; Clic-dcho: quitar enlace</span>
     </div>
     <canvas id="mapCanvas"></canvas>
+    <div class="map-tooltip" id="map-tooltip" hidden></div>
     <div class="shape-panel" id="shape-panel" hidden>
       <div class="shape-row">
         <label for="sp-color" data-i18n="shape.color">Color</label>
@@ -390,6 +397,63 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" id="host-modal-cancel2" onclick="document.getElementById('host-modal').classList.remove('open')" data-i18n="btn.cancel">Cancelar</button>
         <button type="submit" class="btn btn-primary" data-i18n="btn.save">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal: Edición masiva ── -->
+<div class="modal-overlay" id="bulk-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="bulk-title">Edición masiva</h3>
+      <button class="btn-icon" id="bulk-cancel-x">✕</button>
+    </div>
+    <form id="bulk-form">
+      <div class="modal-body">
+        <p class="bulk-hint" data-i18n="bulk.hint">Marca solo los campos que quieras cambiar; el resto se quedará como está.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="check_port"><span data-i18n="f.port">Puerto (0 = ICMP Ping)</span></label>
+            <input name="check_port" type="number" min="0" max="65535" value="0" disabled>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="check_interval"><span data-i18n="f.interval">Intervalo de comprobación (seg)</span></label>
+            <input name="check_interval" type="number" min="5" value="60" disabled>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="timeout"><span data-i18n="f.timeout">Timeout (seg)</span></label>
+            <input name="timeout" type="number" min="1" max="30" value="5" disabled>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="icon_type"><span data-i18n="f.icon">Icono</span></label>
+            <select name="icon_type" disabled></select>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="tags"><span data-i18n="f.tags">Etiquetas (separadas por coma)</span></label>
+            <input name="tags" disabled data-i18n-placeholder="ph.tags" placeholder="red, producción, dmz">
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="group_name"><span data-i18n="f.group">Grupo (dashboard)</span></label>
+            <input name="group_name" list="group-list" disabled data-i18n-placeholder="ph.group" placeholder="Servidores, Red, DNS…">
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="enabled"><span data-i18n="f.enabled">Monitorización activa</span></label>
+            <select name="enabled" disabled><option value="true" data-i18n="bulk.yes">Sí</option><option value="false" data-i18n="bulk.no">No</option></select>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="alert_on_down"><span data-i18n="f.alertDown">Alertar al caer</span></label>
+            <select name="alert_on_down" disabled><option value="true" data-i18n="bulk.yes">Sí</option><option value="false" data-i18n="bulk.no">No</option></select>
+          </div>
+          <div class="form-group">
+            <label class="toggle-row"><input type="checkbox" class="bulk-apply" data-field="alert_on_up"><span data-i18n="f.alertUp">Alertar al recuperarse</span></label>
+            <select name="alert_on_up" disabled><option value="true" data-i18n="bulk.yes">Sí</option><option value="false" data-i18n="bulk.no">No</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="bulk-cancel" data-i18n="btn.cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="bulk-apply-btn">Aplicar</button>
       </div>
     </form>
   </div>

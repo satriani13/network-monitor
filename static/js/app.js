@@ -323,10 +323,38 @@ document.querySelectorAll('#hosts th.sortable').forEach(th => {
   });
 });
 
+let bulkSel = new Set();      // ids ticked in the table (survives the 15 s auto-refresh)
+let _visibleIds = [];
+
 async function loadHostsTable() {
   allHosts = await api.get('api/hosts');
+  bulkSel = new Set([...bulkSel].filter(id => allHosts.some(h => h.id === id)));
   renderHostsTable();
 }
+
+function updateBulkUI() {
+  const n = bulkSel.size;
+  document.getElementById('bulk-bar').hidden = n === 0;
+  document.getElementById('bulk-count').textContent = t('bulk.selected', { n });
+  const all = document.getElementById('bulk-all');
+  const sel = _visibleIds.filter(id => bulkSel.has(id)).length;
+  all.checked = _visibleIds.length > 0 && sel === _visibleIds.length;
+  all.indeterminate = sel > 0 && sel < _visibleIds.length;
+}
+
+document.getElementById('hosts-tbody').addEventListener('change', e => {
+  const cb = e.target.closest('.bulk-cb');
+  if (!cb) return;
+  const id = Number(cb.dataset.id);
+  cb.checked ? bulkSel.add(id) : bulkSel.delete(id);
+  cb.closest('tr').classList.toggle('bulk-selected', cb.checked);
+  updateBulkUI();
+});
+document.getElementById('bulk-all').addEventListener('change', e => {
+  _visibleIds.forEach(id => e.target.checked ? bulkSel.add(id) : bulkSel.delete(id));
+  renderHostsTable();
+});
+document.getElementById('bulk-clear').addEventListener('click', () => { bulkSel.clear(); renderHostsTable(); });
 
 function renderHostsTable() {
   const q = hostQuery;
@@ -337,13 +365,16 @@ function renderHostsTable() {
       (h.tags || '').toLowerCase().includes(q))
     .sort(compareHosts);
   updateSortHeaders();
+  _visibleIds = hosts.map(h => h.id);
   const tbody = document.getElementById('hosts-tbody');
   if (hosts.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text2)">${t('hosts.empty')}</td></tr>`;
+    updateBulkUI();
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text2)">${t('hosts.empty')}</td></tr>`;
     return;
   }
   tbody.innerHTML = hosts.map(h => `
-    <tr>
+    <tr class="${bulkSel.has(h.id) ? 'bulk-selected' : ''}">
+      <td class="col-check"><input type="checkbox" class="bulk-cb" data-id="${h.id}" ${bulkSel.has(h.id) ? 'checked' : ''}></td>
       <td>
         <div class="status-dot ${h.current_status}" style="display:inline-block;margin-right:6px;vertical-align:middle"></div>
         <b>${esc(h.name)}</b>
@@ -395,6 +426,52 @@ async function deleteHost(id) {
   loadHostsTable();
   if (document.getElementById('dashboard').classList.contains('active')) loadDashboard();
 }
+
+// ── Bulk edit modal ───────────────────────────────────
+const bulkModal = document.getElementById('bulk-modal');
+const bulkForm  = document.getElementById('bulk-form');
+const BULK_NUM  = ['check_port', 'check_interval', 'timeout'];
+const BULK_BOOL = ['enabled', 'alert_on_down', 'alert_on_up'];
+
+// same icon list as the single-host form (options carry their data-i18n)
+bulkForm.elements.icon_type.innerHTML = document.querySelector('#host-form select[name=icon_type]').innerHTML;
+applyI18n();
+
+function bulkApplyLabel() {
+  document.getElementById('bulk-apply-btn').textContent = t('bulk.apply', { n: bulkSel.size });
+  document.getElementById('bulk-title').textContent = t('bulk.title', { n: bulkSel.size });
+}
+
+bulkForm.querySelectorAll('.bulk-apply').forEach(cb => cb.addEventListener('change', () => {
+  bulkForm.elements[cb.dataset.field].disabled = !cb.checked;
+}));
+
+async function openBulkModal() {
+  if (!bulkSel.size) return;
+  bulkForm.reset();
+  bulkForm.querySelectorAll('.bulk-apply').forEach(cb => { bulkForm.elements[cb.dataset.field].disabled = true; });
+  bulkApplyLabel();
+  const groups = await api.get('api/groups');
+  document.getElementById('group-list').innerHTML = groups.filter(Boolean).map(g => `<option value="${esc(g)}">`).join('');
+  bulkModal.classList.add('open');
+}
+document.getElementById('bulk-edit-btn').addEventListener('click', openBulkModal);
+['bulk-cancel', 'bulk-cancel-x'].forEach(id => document.getElementById(id).addEventListener('click', () => bulkModal.classList.remove('open')));
+
+bulkForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const changes = {};
+  bulkForm.querySelectorAll('.bulk-apply:checked').forEach(cb => {
+    const f = cb.dataset.field, v = bulkForm.elements[f].value;
+    changes[f] = BULK_BOOL.includes(f) ? v === 'true' : BULK_NUM.includes(f) ? Number(v) : v.trim();
+  });
+  if (!Object.keys(changes).length) { toast(t('bulk.noFields'), 'error'); return; }
+  const [status, res] = await api.put('api/hosts/bulk', { ids: [...bulkSel], changes });
+  if (status !== 200) { toast(t('toast.error', { e: res.error || status }), 'error'); return; }
+  bulkModal.classList.remove('open');
+  toast(t('bulk.done', { n: res.updated }), 'success');
+  loadHostsTable();
+});
 
 // ── Host modal (add / edit) ───────────────────────────
 const hostModal = document.getElementById('host-modal');
@@ -494,6 +571,7 @@ document.getElementById('host-form').addEventListener('submit', async e => {
   hostModal.classList.remove('open');
   loadHostsTable();
   if (document.getElementById('dashboard').classList.contains('active')) loadDashboard();
+  if (document.getElementById('map').classList.contains('active')) refreshMapHosts();
 });
 
 document.getElementById('detail-modal-close').addEventListener('click', () =>
@@ -567,6 +645,16 @@ function resizeCanvas() {
   drawMap();
 }
 window.addEventListener('resize', resizeCanvas);
+
+// Re-read hosts but keep the positions currently on the canvas (they may be mid-drag)
+async function refreshMapHosts() {
+  const fresh = await api.get('api/hosts');
+  mapHosts = fresh.map(nh => {
+    const existing = mapHosts.find(x => x.id === nh.id);
+    return { ...nh, map_x: existing?.map_x ?? nh.map_x, map_y: existing?.map_y ?? nh.map_y };
+  });
+  drawMap();
+}
 
 async function loadMapData() {
   [mapHosts, mapLinks, mapShapes] = await Promise.all([api.get('api/hosts'), api.get('api/links'), api.get('api/shapes')]);
@@ -1091,9 +1179,10 @@ function setSelectMode(on) {
 }
 $sp('map-select-btn').addEventListener('click', () => setSelectMode(!selectMode));
 
-function beginGroupDrag(wp) {
+function beginGroupDrag(wp, clickedHost = null) {
+  hideMapTooltip();
   groupDrag = {
-    start: wp, moved: false,
+    start: wp, moved: false, clickedHost,
     hosts:  [...selHosts].map(id => { const h = mapHosts.find(x => x.id === id); return { id, x: h.map_x, y: h.map_y }; }),
     shapes: [...selShapes].map(s => ({ s, x: s.x, y: s.y })),
   };
@@ -1193,7 +1282,10 @@ window.addEventListener('mouseup', async () => {
     const g = groupDrag;
     groupDrag = null;
     canvas.style.cursor = (shapeTool || selectMode) ? 'crosshair' : 'default';
-    if (!g.moved) return;
+    if (!g.moved) {
+      if (g.clickedHost) { setSelection([g.clickedHost.id], []); openHostModal(g.clickedHost); }   // plain click = edit
+      return;
+    }
     await Promise.all([
       ...g.hosts.map(it => { const h = mapHosts.find(x => x.id === it.id); return h && api.put(`api/hosts/${h.id}`, { map_x: h.map_x, map_y: h.map_y }); }),
       ...g.shapes.map(it => saveShape(it.s)),
@@ -1263,7 +1355,7 @@ canvas.addEventListener('mousedown', e => {
       const inSel = h ? selHosts.has(h.id) : selShapes.has(sh);
       if (!(inSel && selHosts.size + selShapes.size > 1))   // keep a multi-selection when dragging one of its members
         h ? setSelection([h.id], []) : setSelection([], [sh]);
-      beginGroupDrag(wp);
+      beginGroupDrag(wp, h);
       return;
     }
     if (selectMode || additive) {                      // rubber-band selection on empty space
@@ -1286,6 +1378,7 @@ canvas.addEventListener('mousemove', e => {
 
   if (shapeDrag || groupDrag || marquee) return;
   if (panning) {
+    hideMapTooltip();
     transform.x = panning.tx + (cx - panning.startX);
     transform.y = panning.ty + (cy - panning.startY);
     drawMap();
@@ -1294,11 +1387,29 @@ canvas.addEventListener('mousemove', e => {
 
   const h = hostAt(cx, cy);
   const wp = toWorld(cx, cy);
+  showMapTooltip(h, e);
   canvas.style.cursor = h ? (linkMode ? 'crosshair' : 'pointer')
     : (linkMode || shapeTool || selectMode) ? 'crosshair'
     : handleAt(wp) ? 'pointer'
     : shapeAt(wp) ? 'move' : 'default';
 });
+
+const mapTip = document.getElementById('map-tooltip');
+function hideMapTooltip() { mapTip.hidden = true; }
+function showMapTooltip(h, e) {
+  const desc = (h?.description || '').trim();
+  if (!desc) { hideMapTooltip(); return; }
+  mapTip.textContent = desc;                       // textContent: descriptions are user text
+  mapTip.hidden = false;
+  const box = canvas.parentElement.getBoundingClientRect();
+  let x = e.clientX - box.left + 16, y = e.clientY - box.top + 18;
+  if (x + mapTip.offsetWidth > box.width - 8)  x = e.clientX - box.left - mapTip.offsetWidth - 12;
+  if (y + mapTip.offsetHeight > box.height - 8) y = e.clientY - box.top - mapTip.offsetHeight - 12;
+  mapTip.style.left = Math.max(4, x) + 'px';
+  mapTip.style.top  = Math.max(4, y) + 'px';
+}
+canvas.addEventListener('mouseleave', hideMapTooltip);
+canvas.addEventListener('wheel', hideMapTooltip, { passive: true });
 
 canvas.addEventListener('mouseup', e => {
   if (panning) {
@@ -1323,8 +1434,7 @@ canvas.addEventListener('wheel', e => {
 canvas.addEventListener('dblclick', e => {
   const rect = canvas.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  const h = hostAt(cx, cy);
-  if (h) { openHostDetail(h.id); return; }
+  if (hostAt(cx, cy)) return;
   const sh = shapeAt(toWorld(cx, cy));
   if (sh?.kind === 'text') { selectShape(sh); $sp('sp-text').focus(); }
 });
@@ -1446,16 +1556,7 @@ setInterval(() => {
   const active = document.querySelector('.section.active')?.id;
   if (active === 'dashboard') loadDashboard();
   if (active === 'hosts')     loadHostsTable();
-  if (active === 'map') {
-    api.get('api/hosts').then(h => {
-      // Merge positions from canvas with fresh status
-      mapHosts = h.map(nh => {
-        const existing = mapHosts.find(x => x.id === nh.id);
-        return { ...nh, map_x: existing?.map_x ?? nh.map_x, map_y: existing?.map_y ?? nh.map_y };
-      });
-      drawMap();
-    });
-  }
+  if (active === 'map') refreshMapHosts();
 }, 15000);
 
 // ── Theme toggle ──────────────────────────────────────
@@ -1523,6 +1624,8 @@ setInterval(() => {
 // ── Language switch: re-render everything that JS built ──
 function afterLangChange() {
   refreshThemeLabel();
+  updateBulkUI();
+  if (bulkModal.classList.contains('open')) bulkApplyLabel();
   const active = document.querySelector('.section.active')?.id || 'dashboard';
   navigate(active);                                   // title + reload data with translated strings
   updateMapHint();

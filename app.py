@@ -337,6 +337,42 @@ def add_host():
     return jsonify(host.to_dict()), 201
 
 
+# Bulk edit: apply the same generic (non host-specific) fields to several hosts at once
+def _as_bool(v):
+    return v if isinstance(v, bool) else str(v).lower() in ('1', 'true', 'yes', 'on')
+
+
+BULK_FIELDS = {
+    'check_port':     lambda v: max(0, min(65535, int(v))),
+    'check_interval': lambda v: max(5, int(v)),
+    'timeout':        lambda v: max(1, min(30, int(v))),
+    'icon_type':      lambda v: str(v)[:50] or 'computer',
+    'tags':           lambda v: str(v)[:255],
+    'group_name':     lambda v: str(v)[:100],
+    'enabled':        _as_bool,
+    'alert_on_down':  _as_bool,
+    'alert_on_up':    _as_bool,
+}
+
+
+@app.route('/api/hosts/bulk', methods=['PUT'])
+def bulk_update_hosts():
+    d = request.json or {}
+    try:
+        ids = [int(i) for i in d.get('ids', [])]
+        changes = {k: BULK_FIELDS[k](v) for k, v in (d.get('changes') or {}).items() if k in BULK_FIELDS}
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid data'}), 400
+    if not ids or not changes:
+        return jsonify({'error': 'Nothing to update'}), 400
+    hosts = Host.query.filter(Host.id.in_(ids)).all()
+    for h in hosts:
+        for k, v in changes.items():
+            setattr(h, k, v)
+    db.session.commit()
+    return jsonify({'updated': len(hosts), 'fields': sorted(changes)})
+
+
 @app.route('/api/hosts/<int:host_id>', methods=['GET'])
 def get_host(host_id):
     host = Host.query.get_or_404(host_id)
