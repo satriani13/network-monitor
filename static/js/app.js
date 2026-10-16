@@ -1516,6 +1516,17 @@ async function deleteLink(id) {
   drawMap();
 }
 
+// ── Last modification (deployed version) shown at the bottom of the sidebar ──
+let appVersion = null;
+function renderAppUpdated() {
+  const el = document.getElementById('app-updated');
+  if (!appVersion?.updated) { el.textContent = '–'; return; }
+  el.textContent = new Date(appVersion.updated * 1000).toLocaleString(LOCALES[LANG],
+    { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  el.title = appVersion.commit ? `commit ${appVersion.commit}` : '';
+}
+api.get('api/version').then(v => { appVersion = v; renderAppUpdated(); }).catch(() => {});
+
 // ── Sidebar badge update ──────────────────────────────
 function updateSidebarBadges(stats) {
   document.getElementById('sb-up').textContent      = stats.up;
@@ -1624,6 +1635,7 @@ setInterval(() => {
 // ── Language switch: re-render everything that JS built ──
 function afterLangChange() {
   refreshThemeLabel();
+  renderAppUpdated();
   updateBulkUI();
   if (bulkModal.classList.contains('open')) bulkApplyLabel();
   const active = document.querySelector('.section.active')?.id || 'dashboard';

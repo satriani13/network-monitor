@@ -568,6 +568,33 @@ def get_groups():
     return jsonify(names)
 
 
+# Last modification of the application = time of the deployed git commit
+# (falls back to the newest file mtime when git isn't available)
+def _app_version():
+    try:
+        out = subprocess.run(['git', 'log', '-1', '--format=%ct %h'], cwd=basedir,
+                             capture_output=True, text=True, timeout=5)
+        ts, commit = out.stdout.split()
+        return {'updated': int(ts), 'commit': commit}
+    except Exception:
+        newest = 0
+        for root, _, files in os.walk(basedir):
+            if any(p in root for p in ('.git', 'venv', '__pycache__')):
+                continue
+            for f in files:
+                if f.endswith(('.py', '.html', '.js', '.css', '.svg')):
+                    newest = max(newest, int(os.path.getmtime(os.path.join(root, f))))
+        return {'updated': newest, 'commit': ''}
+
+
+APP_VERSION = _app_version()
+
+
+@app.route('/api/version', methods=['GET'])
+def get_version():
+    return jsonify(APP_VERSION)
+
+
 # Stats for dashboard
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
