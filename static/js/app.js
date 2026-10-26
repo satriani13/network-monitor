@@ -252,7 +252,7 @@ let hostQuery = '';
 let hostSort = { key: 'name', dir: 1 };
 try {
   const saved = JSON.parse(localStorage.getItem('nm_host_sort'));
-  if (saved && ['name', 'address', 'icon', 'status'].includes(saved.key) && (saved.dir === 1 || saved.dir === -1)) hostSort = saved;
+  if (saved && ['name', 'address', 'icon', 'status', 'rtt'].includes(saved.key) && (saved.dir === 1 || saved.dir === -1)) hostSort = saved;
 } catch {}
 
 const STATUS_RANK = { down: 0, unknown: 1, up: 2 };
@@ -288,6 +288,12 @@ function byName(a, b) {
 
 function compareHosts(a, b) {
   let r = 0;
+  if (hostSort.key === 'rtt') {
+    // hosts without a measurement (down / never checked) always go last, whatever the direction
+    const ra = a.last_rtt, rb = b.last_rtt;
+    if (ra == null || rb == null) return ra == null && rb == null ? byName(a, b) : ra == null ? 1 : -1;
+    return (ra - rb) * hostSort.dir || byName(a, b);
+  }
   if (hostSort.key === 'address') {
     const ka = ipKey(a.address), kb = ipKey(b.address);
     if (ka !== null && kb !== null) r = ka - kb;
