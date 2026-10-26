@@ -687,6 +687,25 @@ const MAP_THEMES = {
 };
 let MC = MAP_THEMES.dark;
 
+// ── Animation: flowing link dashes + marching selection rings ──
+let dashPhase = 0;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let _lastFrame = 0;
+function animateMap(ts) {
+  requestAnimationFrame(animateMap);
+  stepMap(ts);
+}
+function stepMap(ts) {
+  if (reduceMotion.matches || ts - _lastFrame < 33) return;          // ~30 fps, none if the user prefers reduced motion
+  const dt = Math.min(0.1, (ts - _lastFrame) / 1000);
+  _lastFrame = ts;
+  const busy = mapLinks.length || selHosts.size || selShapes.size || linkMode;
+  if (!busy || !document.getElementById('map').classList.contains('active')) return;
+  dashPhase = (dashPhase + 22 * dt) % 1000;
+  drawMap();
+}
+requestAnimationFrame(animateMap);
+
 function drawMap() {
   MC = MAP_THEMES[document.documentElement.getAttribute('data-theme')] || MAP_THEMES.dark;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -717,8 +736,10 @@ function drawMap() {
     ctx.strokeStyle = MC.link;
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
+    ctx.lineDashOffset = -dashPhase;          // dashes travel from source to destination
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
     // Label
     if (lk.label) {
       const mx = (src.map_x + dst.map_x) / 2, my = (src.map_y + dst.map_y) / 2;
@@ -744,6 +765,7 @@ function drawSelectionOverlay() {
   const k = 1 / transform.scale;
   ctx.save();
   ctx.strokeStyle = '#388bfd'; ctx.lineWidth = 2 * k; ctx.setLineDash([5 * k, 4 * k]);
+  ctx.lineDashOffset = -dashPhase * k;        // selection ring "marches" around the device
   mapHosts.forEach(h => {
     if (!selHosts.has(h.id)) return;
     ctx.beginPath(); ctx.arc(h.map_x, h.map_y, 32, 0, Math.PI * 2); ctx.stroke();
@@ -813,8 +835,10 @@ function drawHostNode(h) {
     ctx.strokeStyle = '#1f6feb88';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 3]);
+    ctx.lineDashOffset = -dashPhase;
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
   }
   if (linkSrc?.id === h.id) {
     ctx.beginPath();
@@ -1003,6 +1027,7 @@ function drawSelection(sh, handles = true) {
   if (sh.kind !== 'line' || !handles) {
     const b = shapeBounds(sh);
     ctx.strokeStyle = '#388bfd'; ctx.lineWidth = k; ctx.setLineDash([5 * k, 4 * k]);
+    ctx.lineDashOffset = -dashPhase * k;
     ctx.strokeRect(b.x, b.y, b.w, b.h);
     ctx.setLineDash([]);
   }
