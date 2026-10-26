@@ -733,8 +733,9 @@ function drawMap() {
     ctx.beginPath();
     ctx.moveTo(src.map_x, src.map_y);
     ctx.lineTo(dst.map_x, dst.map_y);
-    ctx.strokeStyle = MC.link;
-    ctx.lineWidth = 2;
+    const picked = lk === selLink;
+    ctx.strokeStyle = picked ? '#388bfd' : MC.link;
+    ctx.lineWidth = picked ? 3.5 : 2;
     ctx.setLineDash([6, 4]);
     ctx.lineDashOffset = -dashPhase;          // dashes travel from source to destination
     ctx.stroke();
@@ -1119,7 +1120,35 @@ function itemsInRect(r) {
 function selectShape(sh) { setSelection([], sh ? [sh] : []); }
 
 // The property panel / resize handles only apply when exactly one shape is selected
+// ── Link selection (click a link → delete it from the panel or with Supr) ──
+let selLink = null;
+const linkName = id => mapHosts.find(h => h.id === id)?.name ?? `#${id}`;
+
+function linkAt(wp) {
+  const tol = 6 / transform.scale;
+  let best = null, bestD = tol;
+  for (const lk of mapLinks) {
+    const a = mapHosts.find(h => h.id === lk.src), b = mapHosts.find(h => h.id === lk.dst);
+    if (!a || !b) continue;
+    const d = distToSegment(wp.x, wp.y, a.map_x, a.map_y, b.map_x, b.map_y);
+    if (d <= bestD) { best = lk; bestD = d; }
+  }
+  return best;
+}
+
+function selectLink(lk) {
+  setSelection([], []);                      // clears host/shape selection (and any previous link)
+  selLink = lk;
+  const panel = $sp('link-panel');
+  panel.hidden = !lk;
+  if (lk) $sp('lp-title').textContent = t('link.title', { a: linkName(lk.src), b: linkName(lk.dst) });
+  drawMap();
+}
+$sp('lp-delete').addEventListener('click', () => { if (selLink) deleteLink(selLink.id); });
+$sp('lp-close').addEventListener('click', () => selectLink(null));
+
 function setSelection(hostIds, shapes) {
+  if (selLink) { selLink = null; $sp('link-panel').hidden = true; }
   selHosts = new Set(hostIds);
   selShapes = new Set(shapes);
   const sh = (selHosts.size === 0 && selShapes.size === 1) ? [...selShapes][0] : null;
@@ -1331,10 +1360,13 @@ document.addEventListener('keydown', e => {
     if (shapeDrag || groupDrag || marquee) return;
     if (shapeTool) setShapeTool(shapeTool);
     else if (selectMode) setSelectMode(false);
-    else if (selHosts.size + selShapes.size) setSelection([], []);
+    else if (selHosts.size + selShapes.size || selLink) setSelection([], []);
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !typing) {
     e.preventDefault();
     setSelection(mapHosts.map(h => h.id), mapShapes);
+  } else if ((e.key === 'Delete' || e.key === 'Backspace') && selLink && !typing) {
+    e.preventDefault();
+    deleteLink(selLink.id);
   } else if ((e.key === 'Delete' || e.key === 'Backspace') && selShapes.size && !selHosts.size && !typing) {
     e.preventDefault();
     deleteSelectedShape();
@@ -1383,13 +1415,17 @@ canvas.addEventListener('mousedown', e => {
       beginGroupDrag(wp, h);
       return;
     }
+    if (!selectMode && !additive) {                    // click on a link selects it
+      const lk = linkAt(wp);
+      if (lk) { selectLink(lk); return; }
+    }
     if (selectMode || additive) {                      // rubber-band selection on empty space
       marquee = { x0: wp.x, y0: wp.y, x1: wp.x, y1: wp.y,
                   keep: additive ? { hosts: [...selHosts], shapes: [...selShapes] } : { hosts: [], shapes: [] } };
       if (!additive) setSelection([], []);
       return;
     }
-    if (selHosts.size + selShapes.size) setSelection([], []);
+    if (selHosts.size + selShapes.size || selLink) setSelection([], []);
   }
 
   panning = { startX: cx, startY: cy, tx: transform.x, ty: transform.y };
@@ -1416,7 +1452,8 @@ canvas.addEventListener('mousemove', e => {
   canvas.style.cursor = h ? (linkMode ? 'crosshair' : 'pointer')
     : (linkMode || shapeTool || selectMode) ? 'crosshair'
     : handleAt(wp) ? 'pointer'
-    : shapeAt(wp) ? 'move' : 'default';
+    : shapeAt(wp) ? 'move'
+    : linkAt(wp) ? 'pointer' : 'default';
 });
 
 const mapTip = document.getElementById('map-tooltip');
@@ -1468,6 +1505,11 @@ canvas.addEventListener('contextmenu', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const h = hostAt(e.clientX - rect.left, e.clientY - rect.top);
+  if (!h) {
+    const lk = linkAt(toWorld(e.clientX - rect.left, e.clientY - rect.top));
+    if (lk && confirm(t('confirm.deleteLinkBetween', { a: linkName(lk.src), b: linkName(lk.dst) }))) deleteLink(lk.id);
+    return;
+  }
   if (h) {
     // Find link from this host
     const lk = mapLinks.find(l => l.src === h.id || l.dst === h.id);
@@ -1537,6 +1579,7 @@ async function createLink(src, dst) {
 async function deleteLink(id) {
   await api.del(`api/links/${id}`);
   mapLinks = mapLinks.filter(l => l.id !== id);
+  if (selLink?.id === id) selectLink(null);
   toast(t('toast.linkDeleted'), 'info');
   drawMap();
 }

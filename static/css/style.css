@@ -442,6 +442,7 @@ tbody tr.bulk-selected { background: rgba(56,139,253,.10); }
   box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 10px;
 }
 .shape-panel[hidden] { display: none; }
+.link-title { font-size: 13px; font-weight: 600; word-break: break-word; }
 .shape-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .shape-row label { flex-shrink: 0; }
 .shape-row input[type=number], .shape-row select { padding: 5px 8px; }
